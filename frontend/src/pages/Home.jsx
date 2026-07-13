@@ -138,9 +138,19 @@ export default function Home() {
                 <h1 className="text-5xl md:text-6xl font-extrabold leading-tight tracking-tight text-foreground font-serif">
                   Master Legal Docs in
                   <span className="block mt-2">
-                    <span className="relative inline-block">
+                    <span className="relative inline-block px-1">
                       Minutes
-                      <span className="absolute left-0 -bottom-1 w-full h-[3px] bg-primary rounded-full"></span>
+                      <svg 
+                        className="absolute left-0 -bottom-2 w-full h-3 text-primary" 
+                        viewBox="0 0 100 10" 
+                        preserveAspectRatio="none" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="3.5" 
+                        strokeLinecap="round"
+                      >
+                        <path d="M 3 2 Q 50 9 97 2" />
+                      </svg>
                     </span>
                     , Not Hours
                   </span>
