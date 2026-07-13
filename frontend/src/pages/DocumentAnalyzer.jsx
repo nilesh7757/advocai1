@@ -20,9 +20,17 @@ import {
   Clock,
   BookOpen,
   Maximize2,
+  Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-import { uploadDocument as uploadDocumentApi, getUserSessions as getUserSessionsApi, getChatHistory as getChatHistoryApi, sendChatMessage as sendChatMessageApi, } from '../utils/api';
+import { 
+  uploadDocument as uploadDocumentApi, 
+  getUserSessions as getUserSessionsApi, 
+  getChatHistory as getChatHistoryApi, 
+  sendChatMessage as sendChatMessageApi,
+  deleteSession as deleteSessionApi 
+} from '../utils/api';
 
 const SCORE_LABELS = {
   5: 'Critical',
@@ -88,7 +96,32 @@ const DocumentAnalyzer = () => {
     setSessionId(null);
     setChatHistory([]);
     setError('');
+  };
 
+  const handleDeleteSession = async (e, sessionIdToDelete) => {
+    e.stopPropagation(); // Prevent opening the session when clicking delete
+    if (!window.confirm("Are you sure you want to delete this session?")) return;
+    try {
+      await deleteSessionApi(sessionIdToDelete);
+      // Remove from state
+      setSessions((prev) => prev.filter((s) => (s.id ?? s._id) !== sessionIdToDelete));
+      // If deleted session was the currently open one, reset state
+      if (sessionId === sessionIdToDelete) {
+        setSessionId(null);
+        setSummary('');
+        setHighlightedPreview('');
+        setPreviewText('');
+        setHighRiskClauses([]);
+        setChatHistory([]);
+        setComprehensiveSummary(null);
+        setUploadedFile(null);
+        setError('');
+      }
+      toast.success("Session deleted successfully");
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      toast.error("Failed to delete session");
+    }
   };
 
   const handleCopySummary = () => {
@@ -267,6 +300,30 @@ const DocumentAnalyzer = () => {
   };
 
   useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        document.body.style.overflow = '';
+      } else if (sidebarOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    };
+
+    if (sidebarOpen && window.innerWidth < 768) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     fetchSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -366,7 +423,7 @@ const DocumentAnalyzer = () => {
   );
 
   return (
-    <div className="flex h-[89vh] bg-background">
+    <div className="flex h-[calc(100vh-var(--navbar-height))] bg-background overflow-hidden">
       {/* Animated background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-48 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
@@ -376,39 +433,55 @@ const DocumentAnalyzer = () => {
         />
       </div>
 
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 h-full relative z-[5]`}>
-        <div className={`${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300 bg-card/60 backdrop-blur-xl border-r border-border/50 flex flex-col h-full`}>
-          {sidebarOpen && (
-            <>
-              <div className="p-6 border-b border-border/50 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                      <History className="w-5 h-5 text-foreground" />
-                    </div>
-                    <h2 className="text-lg font-semibold text-foreground">History</h2>
-                  </div>
-                  <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                    <X className="w-5 h-5 text-muted-foreground" />
-                  </button>
-                </div>
-                <p className="text-sm text-muted-foreground">Previous sessions</p>
-              </div>
+      {/* Mobile Sidebar Backdrop */}
+      <div 
+        className={`md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity duration-300 ${
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
-              <div className="h-[70vh] overflow-y-auto p-4 custom-scrollbar">
-                {loadingSessions ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : sessions.length > 0 ? (
-                  <div className="space-y-2">
-                    {sessions.map((session) => (
+      {/* Sidebar */}
+      <div className={`
+        fixed md:relative top-[var(--navbar-height)] md:top-0 bottom-0 left-0 z-40 md:z-10
+        h-[calc(100vh-var(--navbar-height))] md:h-full
+        transition-all duration-300 ease-out transform
+        ${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full md:translate-x-0 w-0 md:w-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto'}
+      `}>
+        <div className="bg-[#0d0e12]/95 md:bg-card/60 backdrop-blur-xl border-r border-border/50 flex flex-col h-full w-80">
+          <div className="p-6 border-b border-border/50 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
+                  <History className="w-5 h-5 text-foreground" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">History</h2>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Previous sessions</p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            {loadingSessions ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : sessions.length > 0 ? (
+              <div className="space-y-2">
+                {sessions.map((session) => {
+                  const isSelected = sessionId === (session.id ?? session._id);
+                  return (
+                    <div
+                      key={session.id ?? session._id}
+                      className="relative group w-full"
+                    >
                       <button
-                        key={session.id ?? session._id}
                         onClick={() => openSession(session)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${
-                          sessionId === (session.id ?? session._id)
+                        className={`w-full text-left p-4 pr-10 rounded-xl border transition-all duration-200 ${
+                          isSelected
                             ? 'bg-gradient-to-br from-primary/20 to-secondary/20 border-primary/50 shadow-lg shadow-primary/20'
                             : 'bg-card/40 border-border/50 hover:bg-card/60 hover:border-border'
                         }`}
@@ -416,42 +489,56 @@ const DocumentAnalyzer = () => {
                         <div className="flex items-start gap-3">
                           <FileText className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground font-medium line-clamp-2 mb-2">{session.summary_preview || session.title || 'Document Analysis'}</p>
+                            <p className="text-sm text-foreground font-medium line-clamp-2 mb-2">
+                              {session.summary_preview || session.title || 'Document Analysis'}
+                            </p>
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">{formatDate(session.created_at || session.createdAt || session.date)}</span>
+                              <span className="text-muted-foreground">
+                                {formatDate(session.created_at || session.createdAt || session.date)}
+                              </span>
                               {Number(session.message_count || session.messages_count || 0) > 0 && (
-                                <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full">{session.message_count || session.messages_count}</span>
+                                <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                                  {session.message_count || session.messages_count}
+                                </span>
                               )}
                             </div>
                           </div>
                         </div>
                       </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="p-4 bg-card/40 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <History className="w-8 h-8 text-muted-foreground" />
+                      
+                      <button
+                        onClick={(e) => handleDeleteSession(e, session.id ?? session._id)}
+                        className="absolute right-3 top-3 p-1.5 rounded-lg bg-card/80 border border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                        title="Delete Session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <p className="text-muted-foreground text-sm mb-1">No previous sessions</p>
-                    <p className="text-muted-foreground text-xs">Upload a document to start</p>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            </>
-          )}
+            ) : (
+              <div className="text-center py-12">
+                <div className="p-4 bg-card/40 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <History className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground text-sm mb-1">No previous sessions</p>
+                <p className="text-muted-foreground text-xs">Upload a document to start</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Sidebar toggle button */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="fixed left-0 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-primary to-secondary text-foreground rounded-r-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-200 z-[5]"
-        >
-          <History className="w-5 h-5" />
-        </button>
-      )}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`fixed left-0 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-primary to-secondary text-foreground rounded-r-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 z-30 ${
+          sidebarOpen ? 'translate-x-80 md:translate-x-0 opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'translate-x-0 opacity-100'
+        }`}
+      >
+        <History className="w-5 h-5 animate-pulse" />
+      </button>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">

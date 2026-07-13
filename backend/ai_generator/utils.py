@@ -687,10 +687,11 @@ def route_after_intent(state: ConversationState) -> str:
         return "feasibility_check"
     elif intent == "document_modification":
         return "generate_document"  # Skip feasibility and info gathering for modifications
-    elif intent in ["summarization", "other"]:
+    elif intent == "summarization":
         return "other_features"
     else:
-        return "other_features"
+        # Default vague/other queries to feasibility check to try and match a legal document type
+        return "feasibility_check"
 
 
 def route_after_feasibility(state: ConversationState) -> str:

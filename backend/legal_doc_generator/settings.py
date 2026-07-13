@@ -27,7 +27,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "legal_document_navigator_db")
 
 if not MONGO_URI:
-    raise ValueError("❌ MONGO_URI environment variable is not set. Please configure it in your .env file.")
+    raise ValueError("[ERROR] MONGO_URI environment variable is not set. Please configure it in your .env file.")
 
 # Disconnect all existing connections first to prevent conflicts
 mongoengine.disconnect_all()
@@ -43,9 +43,9 @@ try:
         socketTimeoutMS=10000,
         uuidRepresentation='standard'
     )
-    print(f"✅ MongoDB connected successfully: {MONGO_DB_NAME}")
+    print(f"[OK] MongoDB connected successfully: {MONGO_DB_NAME}")
 except Exception as e:
-    print(f"❌ Failed to connect to MongoDB: {e}")
+    print(f"[ERROR] Failed to connect to MongoDB: {e}")
     raise
 
 

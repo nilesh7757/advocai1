@@ -22,10 +22,21 @@ def create_and_send_otp(user):
     recipient_list = [user.email]
     
     try:
+        if settings.DEBUG and not getattr(settings, 'EMAIL_HOST_USER', None):
+            print("\n" + "="*60)
+            print(f"🔑 [DEV MODE] OTP Generated for {user.email}: {otp_code}")
+            print("="*60 + "\n")
+            return True
+
         send_mail(subject, message, from_email, recipient_list)
         return True
     except Exception as e:
         print(f"Error sending OTP email: {e}")
+        if settings.DEBUG:
+            print("\n" + "="*60)
+            print(f"🔑 [DEV MODE FALLBACK] OTP Generated for {user.email}: {otp_code} (Email failed: {e})")
+            print("="*60 + "\n")
+            return True
         return False
 
 def is_otp_valid(user, otp_code):

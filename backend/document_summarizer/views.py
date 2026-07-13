@@ -2646,10 +2646,10 @@ def task_status(request, session_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def session_detail(request, session_id):
-    """View a specific session with chat"""
+    """View or delete a specific session with chat"""
     try:
         # Get user from JWT token (request.user is already a User object)
         user = request.user
@@ -2674,6 +2674,16 @@ def session_detail(request, session_id):
             return Response({
                 'error': 'Session not found'
             }, status=status.HTTP_404_NOT_FOUND)
+            
+        if request.method == 'DELETE':
+            # Delete associated chat messages first
+            ChatMessage.objects(session=session).delete()
+            # Delete session
+            session.delete()
+            return Response({
+                'success': True,
+                'message': 'Session and associated messages deleted successfully'
+            }, status=status.HTTP_200_OK)
             
         chat_messages = ChatMessage.objects(session=session).order_by('created_at')
         

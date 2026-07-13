@@ -210,7 +210,7 @@ def download_version_pdf(request, pk, version_number):
             return Response({'error': 'Version content not found'}, status=status.HTTP_404_NOT_FOUND)
 
         pdf_file = _generate_pdf_from_markdown(version['content'])
-        filename = f"{conversation.get("title", "legal_document")}_v{version_number}.pdf"
+        filename = f"{conversation.get('title', 'legal_document')}_v{version_number}.pdf"
         
         response = FileResponse(pdf_file, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'

@@ -39,7 +39,7 @@ def create_conversation_with_chat(request):
             document_data = json.loads(json_str)
             ai_response_content = document_data.get('text', '')
         else:
-            ai_response_content = ai_raw_response # If not JSON, treat raw response as content
+            ai_response_content = "" # Keep document content empty if response is chat/vague query
 
         # Determine a title for the new document (can be improved)
         title = message[:50] + "..." if len(message) > 50 else message
@@ -97,13 +97,11 @@ def send_chat_message(request, pk):
         ai_raw_response = get_gemini_response(message, document_content)
 
         # Parse the AI response to extract document content
-        ai_response_content = ""
+        ai_response_content = document_content if document_content else ""
         if '```json' in ai_raw_response:
             json_str = ai_raw_response.split('```json')[1].split('```')[0]
             document_data = json.loads(json_str)
             ai_response_content = document_data.get('text', '')
-        else:
-            ai_response_content = ai_raw_response # If not JSON, treat raw response as content
 
         # Update messages
         updated_messages = conversation.get('messages', [])

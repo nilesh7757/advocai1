@@ -10,7 +10,10 @@ def get_db():
     if not mongo_uri:
         raise Exception("MONGO_URI is not configured in your environment variables.")
     client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
-    db = client.get_default_database() # The database name is part of the connection string
+    try:
+        db = client.get_default_database() # The database name is part of the connection string
+    except Exception:
+        db = client[getattr(settings, 'MONGO_DB_NAME', 'legal_document_navigator_db')]
     return db
 
 db = get_db()

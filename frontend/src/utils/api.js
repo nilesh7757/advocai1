@@ -31,3 +31,8 @@ export const getChatHistory = async (sessionId) => {
   const response = await axios.get(`api/summarizer/sessions/${sessionId}/`);
   return response.data;
 };
+
+export const deleteSession = async (sessionId) => {
+  const response = await axios.delete(`api/summarizer/sessions/${sessionId}/`);
+  return response.data;
+};

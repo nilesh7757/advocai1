@@ -6,6 +6,7 @@ from mongoengine import (
     ReferenceField,
     ListField,
     DictField,
+    FloatField,
 )
 from datetime import datetime
 from authentication.models import User
@@ -17,10 +18,14 @@ class DocumentSession(Document):
     summary = StringField(required=True)
     highlighted_preview = StringField()
     high_risk_clauses = ListField(DictField())
+    document_type = StringField()
+    comprehensive_summary = DictField()
+    document_type_confidence = FloatField()
     created_at = DateTimeField(default=datetime.utcnow)
     
     meta = {
         'collection': 'document_sessions',
+        'strict': False,
         'indexes': [
             'user',
             '-created_at'

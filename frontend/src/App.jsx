@@ -37,7 +37,13 @@ function AppContent() {
       <div style={{ position: 'absolute', zIndex: -1, width: '100%', height: '100%', opacity: 0.4 }}>
         <ParticlesComponent id="tsparticles" />
       </div>
-      <main className="flex-grow relative z-10" style={{ height: 'calc(100vh - var(--navbar-height))' }}> {/* Use calc() for main height */}
+      <main 
+        className="flex-grow relative z-10 animate-fade-in" 
+        style={{ 
+          height: shouldShowNavbar ? 'calc(100vh - var(--navbar-height))' : '100vh',
+          marginTop: shouldShowNavbar ? 'var(--navbar-height)' : '0px'
+        }}
+      >
         <Routes>
           <Route path="/" element={<Home />} />
           <Route
