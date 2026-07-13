@@ -12,7 +12,9 @@ import {
   Users, 
   FolderOpen, 
   MessageSquare, 
-  LayoutDashboard 
+  LayoutDashboard,
+  Sun,
+  Moon
 } from "lucide-react";
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
@@ -21,6 +23,27 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const { user, isAuthenticated, logout } = useAuth(); // Use AuthContext
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("theme");
+      if (stored) {
+        return stored === "dark";
+      }
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -63,8 +86,15 @@ export default function Navbar() {
     <nav className="bg-background/80 backdrop-blur-md fixed top-0 left-0 w-full z-50 border-b py-4 border-border shadow-lg shadow-black/20 h-[var(--navbar-height)]">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex items-center justify-between h-17">
-          <Link to="/" className="text-3xl font-extrabold text-white hover:text-primary transition-colors duration-200 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent flex-shrink-0">
-            AdvocAI
+          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
+            <svg className="w-8 h-8 text-primary transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <polyline points="9 15 11 17 15 13" />
+            </svg>
+            <span className="text-2xl font-bold font-serif tracking-tight text-foreground group-hover:text-primary transition-colors duration-200">
+              Advoc<span className="text-primary font-sans font-extrabold">AI</span>
+            </span>
           </Link>
           
           {/* Desktop Navigation */}
@@ -103,6 +133,15 @@ export default function Navbar() {
 
           {/* Desktop Auth Section */}
           <div className="hidden lg:flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
+            <Button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
+              title={isDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            >
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </Button>
             {isAuthenticated ? (
               <>
                 <Link to="/profile" className="flex items-center justify-center flex-shrink-0" title="View Profile">
@@ -133,14 +172,23 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden flex items-center">
+          {/* Mobile Menu Button & Theme Toggle */}
+          <div className="lg:hidden flex items-center space-x-2">
+            <Button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              variant="ghost"
+              size="icon"
+              className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
+              title={isDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            >
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </Button>
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-3 rounded-lg hover:bg-foreground/10 transition-colors duration-200 text-muted-foreground hover:text-foreground"
+              className="p-2.5 rounded-lg hover:bg-foreground/10 transition-colors duration-200 text-muted-foreground hover:text-foreground"
               aria-label="Toggle menu"
             >
-              <Menu size={23} />
+              <Menu size={22} />
             </button>
           </div>
         </div>
@@ -156,7 +204,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Sidebar Drawer */}
       <div 
-        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0d0e12]/95 backdrop-blur-xl border-l border-border/40 shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform ${
+        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -177,14 +225,21 @@ export default function Navbar() {
         <div className="p-5 border-b border-border/40 flex items-center justify-between flex-shrink-0">
           <Link 
             to="/" 
-            className="text-2xl font-extrabold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent hover:opacity-90"
+            className="flex items-center gap-2 group flex-shrink-0"
             onClick={() => setIsMenuOpen(false)}
           >
-            AdvocAI
+            <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <polyline points="9 15 11 17 15 13" />
+            </svg>
+            <span className="text-xl font-bold font-serif tracking-tight text-foreground">
+              Advoc<span className="text-primary font-sans font-extrabold">AI</span>
+            </span>
           </Link>
           <button
             onClick={() => setIsMenuOpen(false)}
-            className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors duration-200"
+            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-200"
           >
             <X size={20} />
           </button>
@@ -194,7 +249,7 @@ export default function Navbar() {
         {isAuthenticated && user && (
           <Link 
             to="/profile" 
-            className="p-5 border-b border-border/40 bg-white/5 hover:bg-white/10 flex items-center gap-3 flex-shrink-0 transition-colors duration-200"
+            className="p-5 border-b border-border/40 bg-muted/40 hover:bg-muted/80 flex items-center gap-3 flex-shrink-0 transition-colors duration-200"
             onClick={() => setIsMenuOpen(false)}
           >
             {user.profile_picture ? (

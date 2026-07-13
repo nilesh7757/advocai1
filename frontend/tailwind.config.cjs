@@ -16,45 +16,38 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "#2a3a5b",
-        input: "#1a2847",
-        ring: "#00d4ff",
-
-        background: "#0f172e",
-        foreground: "#f5f5f5",
-
-        card: "#1a2847",
-        "card-foreground": "#f5f5f5",
-
-        popover: "#1a2847",
-        "popover-foreground": "#f5f5f5",
-
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
         primary: {
-          DEFAULT: "#00d4ff",
-          foreground: "#0f172e",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         secondary: {
-          DEFAULT: "gold",
-          foreground: "#0f172e",
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
         },
         destructive: {
-          DEFAULT: "#f44",
-          foreground: "#fff",
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
         },
         muted: {
-          DEFAULT: "#3a4a6b",
-          foreground: "#a0aac0",
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
         },
         accent: {
-          DEFAULT: "#0fc",
-          foreground: "#0f172e",
-        },
-        chart: {
-          1: "#00d4ff",
-          2: "gold",
-          3: "#0fc",
-          4: "#1e90ff",
-          5: "#00bfff",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
         },
       },
       borderRadius: {

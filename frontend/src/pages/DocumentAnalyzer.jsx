@@ -448,7 +448,7 @@ const DocumentAnalyzer = () => {
         transition-all duration-300 ease-out transform
         ${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full md:translate-x-0 w-0 md:w-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto'}
       `}>
-        <div className="bg-[#0d0e12]/95 md:bg-card/60 backdrop-blur-xl border-r border-border/50 flex flex-col h-full w-80">
+        <div className="bg-card md:bg-card/85 backdrop-blur-xl border-r border-border flex flex-col h-full w-80">
           <div className="p-6 border-b border-border/50 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
@@ -1020,14 +1020,14 @@ const DocumentAnalyzer = () => {
                         )}
                         <div className={`max-w-[80%]`}>
                           <div className={`rounded-2xl px-4 py-3 ${
-                            message.sender === 'User' ? 'bg-gradient-to-br from-primary to-secondary text-foreground shadow-lg shadow-primary/20' : 'bg-card/50 text-foreground border border-border/50'
+                            message.sender === 'User' ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/10' : 'bg-card text-foreground border border-border'
                           }`}>
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
                           </div>
                         </div>
                         {message.sender === 'User' && (
                           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                            <User className="w-5 h-5 text-foreground" />
+                            <User className="w-4 h-4 text-primary-foreground" />
                           </div>
                         )}
                       </div>
@@ -1377,14 +1377,14 @@ const DocumentAnalyzer = () => {
                   )}
                   <div className={`max-w-[75%]`}>
                     <div className={`rounded-2xl px-5 py-4 ${
-                      message.sender === 'User' ? 'bg-gradient-to-br from-primary to-secondary text-foreground shadow-lg shadow-primary/20' : 'bg-card/50 text-foreground border border-border/50'
+                      message.sender === 'User' ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/10' : 'bg-card text-foreground border border-border'
                     }`}>
                       <p className="text-base leading-relaxed whitespace-pre-wrap">{message.message}</p>
                     </div>
                   </div>
                   {message.sender === 'User' && (
                     <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <User className="w-6 h-6 text-foreground" />
+                      <User className="w-5 h-5 text-primary-foreground" />
                     </div>
                   )}
                 </div>

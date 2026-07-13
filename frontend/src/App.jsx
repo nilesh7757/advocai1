@@ -21,7 +21,6 @@ import DocumentVersions from "./pages/DocumentVersions"; // Added this import
 import SharedDocumentView from "./pages/SharedDocumentView";
 import ChatList from "./pages/ChatList";
 import Chat from "./pages/Chat";
-import ParticlesComponent from "./Components/Particles";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 function AppContent() {
@@ -30,13 +29,8 @@ function AppContent() {
   const shouldShowNavbar = !hideNavbarRoutes.includes(location.pathname);
 
   return (
-    <div className="relative flex flex-col h-screen bg-background text-white" style={{ '--navbar-height': '4.5rem' }}> {/* Set a reasonable navbar height */}
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-900 via-gray-800 to-black opacity-60" style={{ zIndex: -2 }}></div>
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-3/4 h-3/4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/30 via-purple-900/20 to-transparent blur-3xl" style={{ zIndex: -1 }}></div>
+    <div className="relative flex flex-col h-screen bg-background text-foreground" style={{ '--navbar-height': '4.5rem' }}> {/* Set a reasonable navbar height */}
       {shouldShowNavbar && <Navbar />}
-      <div style={{ position: 'absolute', zIndex: -1, width: '100%', height: '100%', opacity: 0.4 }}>
-        <ParticlesComponent id="tsparticles" />
-      </div>
       <main 
         className="flex-grow relative z-10 animate-fade-in" 
         style={{ 
