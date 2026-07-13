@@ -4,51 +4,67 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAF8F5; /* Premium off-white paper canvas */
-  --foreground: #111827; /* Deep charcoal text */
-  --card: #FFFFFF; /* Clean white card container */
-  --card-foreground: #111827;
+  --background: #FAFAF8;         /* warm off-white page background */
+  --foreground: #1A1A2E;         /* near-black charcoal-navy text */
+
+  --card: #FFFFFF;               /* white cards, slightly lifted off bg */
+  --card-foreground: #1A1A2E;
+
   --popover: #FFFFFF;
-  --popover-foreground: #111827;
-  --primary: #312E81; /* Confident legal indigo-900 */
-  --primary-foreground: #FAF8F5;
-  --secondary: #64748B; /* Muted slate gray */
-  --secondary-foreground: #FAF8F5;
-  --muted: #F8FAFC;
-  --muted-foreground: #475569;
-  --accent: #EEF2F6;
-  --accent-foreground: #312E81;
-  --destructive: #EF4444;
+  --popover-foreground: #1A1A2E;
+
+  --primary: #3730A3;            /* single accent: deep indigo */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #F1F0FB;          /* very light indigo-tinted gray, for subtle fills */
+  --secondary-foreground: #3730A3;
+
+  --muted: #F0F0F2;
+  --muted-foreground: #6B6B7B;   /* mid gray for subtext */
+
+  --accent: #F1F0FB;
+  --accent-foreground: #3730A3;
+
+  --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
-  --border: #E2E8F0;
-  --input: #FAF8F5;
-  --ring: #312E81;
-  --radius: 0.625rem;
-  --grid-line: rgba(15, 23, 42, 0.015);
+
+  --border: #E5E5EA;
+  --input: #E5E5EA;
+  --ring: #3730A3;
+
+  --radius: 0.75rem;
 }
 
 .dark {
-  --background: #0A0A0C; /* Near-black background */
-  --foreground: #F4F4F5; /* Refined white/gray text */
-  --card: #18181B; /* zinc-900 dark card container */
-  --card-foreground: #F4F4F5;
-  --popover: #18181B;
-  --popover-foreground: #F4F4F5;
-  --primary: #F59E0B; /* Warm amber accent */
-  --primary-foreground: #0A0A0C; /* Black text on amber background for perfect contrast */
-  --secondary: #27272A; /* zinc-800 borders/slate */
-  --secondary-foreground: #F4F4F5;
-  --muted: #27272A;
-  --muted-foreground: #A1A1AA;
-  --accent: #27272A;
-  --accent-foreground: #F59E0B;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --border: #27272A;
-  --input: #18181B;
-  --ring: #F59E0B;
-  --radius: 0.625rem;
-  --grid-line: rgba(255, 255, 255, 0.015);
+  --background: #0A0A0F;         /* near-black, not navy */
+  --foreground: #F5F5F7;
+
+  --card: #131318;               /* slightly lighter than bg, flat, no glass blur */
+  --card-foreground: #F5F5F7;
+
+  --popover: #131318;
+  --popover-foreground: #F5F5F7;
+
+  --primary: #D4A574;            /* single accent: warm muted amber/gold */
+  --primary-foreground: #0A0A0F;
+
+  --secondary: #1C1C24;
+  --secondary-foreground: #D4A574;
+
+  --muted: #1C1C24;
+  --muted-foreground: #9494A0;
+
+  --accent: #1C1C24;
+  --accent-foreground: #D4A574;
+
+  --destructive: #F87171;
+  --destructive-foreground: #0A0A0F;
+
+  --border: #232329;
+  --input: #232329;
+  --ring: #D4A574;
+
+  --radius: 0.75rem;
 }
 
  @layer base {
@@ -58,10 +74,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-image:
-      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-    background-size: 32px 32px;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Lora', Georgia, serif;
@@ -227,12 +239,14 @@ mark.high-risk {
    QUIET AUTHORITY DESIGN SYSTEM OVERRIDES
    ============================================================================ */
 
-/* Map legacy gradients to solid Primary Indigo */
+/* Map legacy gradients to solid Primary theme color */
 .bg-gradient-to-r.from-primary.to-secondary,
 .bg-gradient-to-br.from-primary.to-secondary,
 .bg-gradient-to-r.from-secondary.to-primary,
 .bg-gradient-to-br.from-secondary.to-primary,
-.bg-gradient-to-r.from-primary.via-purple-500.to-secondary {
+.bg-gradient-to-r.from-primary.via-purple-500.to-secondary,
+.bg-gradient-to-r.from-primary.to-accent,
+.bg-gradient-to-br.from-primary.to-accent {
   background-image: none !important;
   background-color: var(--primary) !important;
   color: var(--primary-foreground) !important;
@@ -240,14 +254,25 @@ mark.high-risk {
 
 .bg-gradient-to-r.from-primary.to-secondary:hover,
 .bg-gradient-to-br.from-primary.to-secondary:hover,
-.bg-gradient-to-r.from-secondary.to-primary:hover {
-  background-color: #242261 !important; /* Slightly darker indigo hover */
+.bg-gradient-to-r.from-secondary.to-primary:hover,
+.bg-gradient-to-r.from-primary.to-accent:hover {
+  background-color: var(--primary) !important;
+  filter: brightness(0.9) !important;
 }
 
-/* Remove text gradient clipping and replace with solid Primary Indigo */
+/* Ensure all nested items in legacy buttons inherit correct contrast color */
+.bg-gradient-to-r.from-primary.to-secondary *,
+.bg-gradient-to-br.from-primary.to-secondary *,
+.bg-gradient-to-r.from-secondary.to-primary *,
+.bg-gradient-to-r.from-primary.to-accent * {
+  color: inherit !important;
+}
+
+/* Remove text gradient clipping and replace with solid Primary theme color */
 .text-transparent.bg-gradient-to-r.from-primary.to-secondary,
 .text-transparent.bg-gradient-to-r.from-secondary.to-primary,
-.text-transparent.bg-gradient-to-r.from-primary.via-purple-500.to-secondary {
+.text-transparent.bg-gradient-to-r.from-primary.via-purple-500.to-secondary,
+.text-transparent.bg-gradient-to-r.from-primary.to-accent {
   background-image: none !important;
   background-clip: unset !important;
   -webkit-background-clip: unset !important;
@@ -261,28 +286,25 @@ mark.high-risk {
 }
 
 /* Enforce flat, subtle shadows over neon glow boxes */
-.shadow-primary\/50, .shadow-primary\/30, .shadow-primary\/20 {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
-}
-
-/* Mute secondary color variables to clean slate gray/indigo */
-.text-secondary {
-  color: var(--primary) !important;
-}
-.bg-secondary {
-  background-color: var(--primary) !important;
-}
-.bg-secondary\/5 {
-  background-color: rgba(49, 46, 129, 0.03) !important;
-}
-.bg-secondary\/20 {
-  background-color: rgba(49, 46, 129, 0.06) !important;
-}
-.border-secondary\/10, .border-secondary\/20, .border-secondary\/30 {
-  border-color: var(--border) !important;
+.shadow-primary\/50, .shadow-primary\/30, .shadow-primary\/20, .shadow-secondary\/20, .shadow-accent\/20 {
+  box-shadow: none !important;
 }
 
 /* Enforce card shadows consistently */
 .bg-card {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Strip translucency and force solid card backgrounds */
+.bg-card\/30,
+.bg-card\/40,
+.bg-card\/50,
+.bg-card\/60,
+.bg-card\/80,
+.bg-card\/85,
+.bg-card\/90,
+.bg-card\/95 {
+  background-color: var(--card) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

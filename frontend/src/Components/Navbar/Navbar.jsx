@@ -83,17 +83,17 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-background/80 backdrop-blur-md fixed top-0 left-0 w-full z-50 border-b py-4 border-border shadow-lg shadow-black/20 h-[var(--navbar-height)]">
+    <nav className="bg-background/90 backdrop-blur-sm fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)]">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex items-center justify-between h-17">
-          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
-            <svg className="w-8 h-8 text-primary transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+            <svg className="w-6 h-6 text-primary transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <polyline points="9 15 11 17 15 13" />
             </svg>
-            <span className="text-2xl font-bold font-serif tracking-tight text-foreground group-hover:text-primary transition-colors duration-200">
-              Advoc<span className="text-primary font-sans font-extrabold">AI</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Advoc<span className="text-primary font-extrabold">AI</span>
             </span>
           </Link>
           
@@ -104,7 +104,7 @@ export default function Navbar() {
                 <Link 
                   to={link.to} 
                   key={index} 
-                  className="text-muted-foreground hover:text-foreground px-2 xl:px-3.5 py-1.5 text-xs xl:text-sm font-semibold rounded-lg hover:bg-white/5 transition-all duration-200 relative group"
+                  className="text-muted-foreground hover:text-foreground px-2.5 xl:px-3.5 py-1.5 text-xs xl:text-sm font-semibold rounded-lg hover:bg-muted transition-all duration-150 relative group"
                 >
                   {link.label === "Document Analyzer" ? (
                     <>
@@ -279,10 +279,10 @@ export default function Navbar() {
               <Link 
                 to={link.to} 
                 key={index} 
-                className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-200 border border-transparent ${
+                className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-150 border border-transparent ${
                   isActive 
-                    ? 'bg-gradient-to-br from-primary/20 to-secondary/20 border-primary/20 text-foreground font-semibold shadow-lg shadow-primary/5' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                    ? 'bg-primary/10 border-primary/10 text-foreground font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
                 style={{ 
@@ -299,11 +299,11 @@ export default function Navbar() {
         </div>
 
         {/* Footer / Auth actions in Sidebar */}
-        <div className="p-5 border-t border-border/40 flex-shrink-0 bg-[#0d0e12]/60">
+        <div className="p-5 border-t border-border flex-shrink-0 bg-muted/20">
           {isAuthenticated ? (
             <div className="space-y-2">
               <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="outline" className="w-full justify-start border-border/40 hover:bg-white/5 h-11 rounded-xl">
+                <Button variant="outline" className="w-full justify-start border-border hover:bg-muted h-11 rounded-lg">
                   <User size={16} className="mr-2" />
                   View Profile
                 </Button>
@@ -311,7 +311,7 @@ export default function Navbar() {
               <Button 
                 onClick={() => { logout(); setIsMenuOpen(false); }} 
                 variant="destructive" 
-                className="w-full bg-destructive/10 hover:bg-destructive text-destructive hover:text-destructive-foreground transition-all duration-200 h-11 rounded-xl"
+                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-150 h-11 rounded-lg"
               >
                 <LogOut size={16} className="mr-2" />
                 Logout

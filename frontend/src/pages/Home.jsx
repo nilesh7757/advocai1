@@ -8,9 +8,61 @@ import Navbar from "@/Components/Navbar/Navbar" // Import the new Navbar compone
 
 import { useAuth } from '../context/AuthContext'; // Import useAuth
 
+function ProductPreviewCard() {
+  return (
+    <div className="relative w-full max-w-lg mx-auto bg-card rounded-2xl border border-border shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] dark:shadow-none overflow-hidden animate-fade-in-up">
+      {/* Top browser bar */}
+      <div className="flex items-center justify-between bg-muted/40 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-border" />
+          <div className="w-2.5 h-2.5 rounded-full bg-border" />
+          <div className="w-2.5 h-2.5 rounded-full bg-border" />
+        </div>
+        <span className="text-xs font-mono text-muted-foreground select-none">
+          advocai.net/document/analyzer
+        </span>
+        <div className="w-10" />
+      </div>
+      
+      {/* Document content mock */}
+      <div className="p-6 space-y-4 bg-card">
+        {/* Paragraph 1 */}
+        <div className="space-y-2">
+          <div className="h-3 w-[90%] bg-muted rounded animate-pulse" />
+          <div className="h-3 w-[95%] bg-muted rounded animate-pulse" />
+          <div className="h-3 w-[85%] bg-muted rounded animate-pulse" />
+        </div>
+
+        {/* Highlighted Risky Clause Block */}
+        <div className="relative my-4 p-4 bg-primary/5 border border-primary/20 dark:border-primary/30 rounded-xl space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider font-mono">Section 4.2: Indemnification</span>
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+              <span>⚠️</span> Risk Detected
+            </span>
+          </div>
+          <p className="text-xs leading-relaxed text-foreground/80 font-sans">
+            "The Client agrees to indemnify and hold harmless the Provider from any and all claims, damages, or liabilities arising directly or indirectly under this Agreement, without limitation of liability or cap on damages."
+          </p>
+          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>AI Risk Score: <strong className="text-destructive font-semibold">High Risk</strong></span>
+            <span className="text-primary font-medium hover:underline cursor-pointer">Suggested Revision Available</span>
+          </div>
+        </div>
+
+        {/* Paragraph 2 */}
+        <div className="space-y-2">
+          <div className="h-3 w-[95%] bg-muted rounded animate-pulse" />
+          <div className="h-3 w-[88%] bg-muted rounded animate-pulse" />
+          <div className="h-3 w-[40%] bg-muted rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [selectedFeature, setSelectedFeature] = useState(null)
-  const [activeDemo, setActiveDemo] = useState("analyzer")
   const { isAuthenticated } = useAuth(); // Get isAuthenticated from AuthContext
   // isLoggedIn, showProfileMenu, profileMenuRef, navigate, isAuthenticated, user, logout, handleProtectedNavClick are now handled by Navbar component
 
@@ -48,7 +100,7 @@ export default function Home() {
     signature: {
       title: "Secure E-Signature",
       description:
-        "Sign documents with complete legal validity and security. Compliant with eIDAS, ESIGN Act, and other global regulations.",
+        "Sign documents with complete legal validity and safety. Our e-signature solution is compliant with ESIGN Act and other regulations.",
       features: [
         "Legally binding digital signatures",
         "Multi-party signature workflows",
@@ -58,7 +110,7 @@ export default function Home() {
     "gen-track-sign": {
       title: "Generate, Track & Sign",
       description:
-        "Create custom documents with AI, track every version change in real-time, and collect legally binding e-signatures from multiple parties. Manage your entire document lifecycle in one platform.",
+        "Create custom documents with AI, track version changes, and collect legally binding e-signatures from all parties. Manage document life cycles.",
       features: [
         "AI-powered custom document creation",
         "Complete version history with timestamps",
@@ -72,75 +124,76 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
       <div className="relative z-10">
         <section className="relative overflow-hidden py-20 md:py-32">
-          {/* Subtle static gradient mesh - tasteful accent moment only in the hero */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-25">
-            <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-[radial-gradient(circle,rgba(49,46,129,0.12)_0%,transparent_70%)] blur-3xl" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(49,46,129,0.06)_0%,transparent_70%)] blur-3xl" />
+          {/* Subtle static blob behind hero - tasteful accent moment only in the hero */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+            <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(55,48,163,0.06)_0%,transparent_70%)] blur-3xl" />
           </div>
 
-          <div className="relative w-full px-4 sm:px-6 lg:px-8"> {/* Changed to w-full */}
+          <div className="relative w-full px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="space-y-6 z-10">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">AI-Powered Legal Platform</span>
+                <div className="inline-flex items-center px-3 py-1 border border-border rounded-full text-xs font-medium text-muted-foreground">
+                  AI-Powered Legal Assistant
                 </div>
-                <h1 className="text-5xl md:text-6xl font-bold leading-tight tracking-tight text-foreground font-serif">
+                <h1 className="text-5xl md:text-6xl font-extrabold leading-tight tracking-tight text-foreground font-serif">
                   Master Legal Docs in
-                  <span className="block relative mt-2 pb-2">
-                    Seconds, Not Hours
-                    <span className="absolute bottom-0 left-0 w-20 h-1 bg-primary rounded-full"></span>
+                  <span className="block mt-2">
+                    <span className="relative inline-block">
+                      Minutes
+                      <span className="absolute left-0 -bottom-1 w-full h-[3px] bg-primary rounded-full"></span>
+                    </span>
+                    , Not Hours
                   </span>
                 </h1>
-                <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-                  Stop struggling with confusing contracts. Our AI instantly simplifies legal jargon, flags risks,
-                  generates custom legal documents, and connects you with expert lawyers when you need them.
+                <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
+                  Stop struggling with confusing contracts. Our AI simplifies legal jargon, flags risks,
+                  generates custom documents, and connects you with expert lawyers when you need them.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   {isAuthenticated ? (
                     <>
                       <Button
                         size="lg"
-                        className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base px-8 h-12 shadow-sm rounded-xl transition-all duration-200"
+                        className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-base px-8 h-12 shadow-sm transition-colors duration-150"
                         asChild
                       >
                         <Link to="/document-creation">
-                          Document Generation <ArrowRight className="w-5 h-5" />
+                          Get Started <ArrowRight className="w-5 h-5" />
                         </Link>
                       </Button>
                       <Button
                         size="lg"
                         variant="outline"
-                        className="border border-border/80 text-foreground hover:bg-muted/80 font-semibold text-base px-8 h-12 rounded-xl bg-transparent transition-all duration-200"
+                        className="rounded-lg border border-border text-foreground bg-transparent hover:bg-secondary font-medium text-base px-8 h-12 transition-colors duration-150"
                         asChild
                       >
-                        <Link to="/document-analyzer">Document Analyzer</Link>
+                        <Link to="/document-analyser">Analyze Document</Link>
                       </Button>
                     </>
                   ) : (
                     <>
                       <Button
                         size="lg"
-                        className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base px-8 h-12 shadow-sm rounded-xl transition-all duration-200"
+                        className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-base px-8 h-12 shadow-sm transition-colors duration-150"
                         asChild
                       >
                         <Link to="/signup">
-                          Sign Up <ArrowRight className="w-5 h-5" />
+                          Get Started <ArrowRight className="w-5 h-5" />
                         </Link>
                       </Button>
                       <Button
                         size="lg"
                         variant="outline"
-                        className="border border-border/80 text-foreground hover:bg-muted/80 font-semibold text-base px-8 h-12 rounded-xl bg-transparent transition-all duration-200"
+                        className="rounded-lg border border-border text-foreground bg-transparent hover:bg-secondary font-medium text-base px-8 h-12 transition-colors duration-150"
                         asChild
                       >
-                        <Link to="/login">Sign In</Link>
+                        <Link to="/login">See How It Works</Link>
                       </Button>
                     </>
                   )}
                 </div>
                 <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-2 font-medium">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                     <span>No card needed</span>
                   </div>
@@ -148,84 +201,7 @@ export default function Home() {
               </div>
 
               <div className="relative">
-                <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5">
-                  <div className="bg-card rounded-xl overflow-hidden">
-                    {/* Toggle Buttons */}
-                    <div className="flex border-b border-border/80 bg-muted/20">
-                      <button
-                        onClick={() => setActiveDemo("analyzer")}
-                        className={`flex-1 px-6 py-4 text-sm font-semibold transition-all ${
-                          activeDemo === "analyzer"
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/10"
-                        }`}
-                      >
-                        Document Analysis
-                      </button>
-                      <button
-                        onClick={() => setActiveDemo("creator")}
-                        className={`flex-1 px-6 py-4 text-sm font-semibold transition-all ${
-                          activeDemo === "creator"
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/10"
-                        }`}
-                      >
-                        Document Generator
-                      </button>
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="p-8 space-y-4 min-h-64">
-                      {activeDemo === "analyzer" ? (
-                        <>
-                          <div className="flex items-center gap-3 pb-4 border-b border-border/80">
-                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-primary" />
-                            </div>
-                            <span className="font-semibold text-lg text-foreground">Document Analysis</span>
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <ArrowUpRight className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">Clauses decoded instantly</span>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <Shield className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">Risk alerts highlighted</span>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <Zap className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">Key terms simplified</span>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-3 pb-4 border-b border-border/80">
-                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                              <Sparkles className="w-5 h-5 text-primary" />
-                            </div>
-                            <span className="font-semibold text-lg text-foreground">Document Generator</span>
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <Zap className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">AI-powered document creation</span>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <ArrowUpRight className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">Chat-based editing interface</span>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                              <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-                              <span className="text-sm font-medium text-foreground">Instant download & regenerate</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <ProductPreviewCard />
               </div>
             </div>
           </div>
