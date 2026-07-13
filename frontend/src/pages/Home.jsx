@@ -10,53 +10,12 @@ import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 function ProductPreviewCard() {
   return (
-    <div className="relative w-full max-w-lg mx-auto bg-card rounded-2xl border border-border shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] dark:shadow-none overflow-hidden animate-fade-in-up">
-      {/* Top browser bar */}
-      <div className="flex items-center justify-between bg-muted/40 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-border" />
-          <div className="w-2.5 h-2.5 rounded-full bg-border" />
-          <div className="w-2.5 h-2.5 rounded-full bg-border" />
-        </div>
-        <span className="text-xs font-mono text-muted-foreground select-none">
-          advocai.net/document/analyzer
-        </span>
-        <div className="w-10" />
-      </div>
-      
-      {/* Document content mock */}
-      <div className="p-6 space-y-4 bg-card">
-        {/* Paragraph 1 */}
-        <div className="space-y-2">
-          <div className="h-3 w-[90%] bg-muted rounded animate-pulse" />
-          <div className="h-3 w-[95%] bg-muted rounded animate-pulse" />
-          <div className="h-3 w-[85%] bg-muted rounded animate-pulse" />
-        </div>
-
-        {/* Highlighted Risky Clause Block */}
-        <div className="relative my-4 p-4 bg-primary/5 border border-primary/20 dark:border-primary/30 rounded-xl space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider font-mono">Section 4.2: Indemnification</span>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-              <span>⚠️</span> Risk Detected
-            </span>
-          </div>
-          <p className="text-xs leading-relaxed text-foreground/80 font-sans">
-            "The Client agrees to indemnify and hold harmless the Provider from any and all claims, damages, or liabilities arising directly or indirectly under this Agreement, without limitation of liability or cap on damages."
-          </p>
-          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>AI Risk Score: <strong className="text-destructive font-semibold">High Risk</strong></span>
-            <span className="text-primary font-medium hover:underline cursor-pointer">Suggested Revision Available</span>
-          </div>
-        </div>
-
-        {/* Paragraph 2 */}
-        <div className="space-y-2">
-          <div className="h-3 w-[95%] bg-muted rounded animate-pulse" />
-          <div className="h-3 w-[88%] bg-muted rounded animate-pulse" />
-          <div className="h-3 w-[40%] bg-muted rounded animate-pulse" />
-        </div>
-      </div>
+    <div className="relative w-full max-w-lg mx-auto overflow-hidden rounded-2xl border border-border shadow-md shadow-primary/5 animate-fade-in-up">
+      <img 
+        src="/legal_assistant_hero.jpg" 
+        alt="AdvocAI Assistant Mockup" 
+        className="w-full h-auto object-cover" 
+      />
     </div>
   );
 }
@@ -123,7 +82,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
       <div className="relative z-10">
-        <section className="relative overflow-hidden py-20 md:py-32">
+        <section className="relative overflow-hidden py-20 md:py-24">
           {/* Subtle static blob behind hero - tasteful accent moment only in the hero */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
             <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(55,48,163,0.06)_0%,transparent_70%)] blur-3xl" />
@@ -135,24 +94,27 @@ export default function Home() {
                 <div className="inline-flex items-center px-3 py-1 border border-border rounded-full text-xs font-medium text-muted-foreground">
                   AI-Powered Legal Assistant
                 </div>
-                <h1 className="text-5xl md:text-6xl font-extrabold leading-tight tracking-tight text-foreground font-serif">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight tracking-tight text-foreground font-serif">
                   Master Legal Docs in
                   <span className="block mt-2">
-                    <span className="relative inline-block px-1">
-                      Minutes
-                      <svg 
-                        className="absolute left-0 -bottom-1.5 w-full h-3 text-primary" 
-                        viewBox="0 0 100 10" 
-                        preserveAspectRatio="none" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="3.5" 
-                        strokeLinecap="round"
-                      >
-                        <path d="M 4 8 Q 48 1 96 9" />
-                      </svg>
-                    </span>
-                    , Not Hours
+                    <span className="inline-block whitespace-nowrap">
+                      <span className="relative inline-block px-1">
+                        Minutes
+                        <svg 
+                          className="absolute left-0 -bottom-1.5 w-full h-3 text-primary" 
+                          viewBox="0 0 100 10" 
+                          preserveAspectRatio="none" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="3.5" 
+                          strokeLinecap="round"
+                        >
+                          <path d="M 4 8 Q 48 1 96 9" />
+                        </svg>
+                      </span>
+                      ,
+                    </span>{" "}
+                    <span className="inline-block whitespace-nowrap">Not Hours</span>
                   </span>
                 </h1>
                 <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
@@ -219,10 +181,10 @@ export default function Home() {
 
         <section
           id="features-detailed"
-          className="w-full px-4 sm:px-6 lg:px-8 py-16 md:py-24 border-t border-border" // Changed to w-full
+          className="w-full px-4 sm:px-6 lg:px-8 py-20 md:py-24 border-t border-border"
         >
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-full mb-6">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full mb-6">
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-bold text-primary">
                 Core Capabilities
@@ -237,12 +199,12 @@ export default function Home() {
           {/* Feature 1: AI-Powered Document Analyzer */}
           <div className="grid md:grid-cols-2 gap-12 items-center mb-24">
             <div className="relative order-2 md:order-1 cursor-pointer" onClick={() => setSelectedFeature("analyzer")}>
-              <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5 overflow-hidden">
-                <div className="relative bg-card rounded-xl h-64 flex flex-col items-center justify-center gap-6 p-8">
-                  <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-primary" />
+              <div className="relative bg-card rounded-2xl border border-border shadow-md shadow-primary/5 overflow-hidden min-h-[280px] flex flex-col justify-center p-6">
+                <div className="flex flex-col items-center justify-center gap-6">
+                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <FileText className="w-7 h-7 text-primary" />
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-1.5">
                     <p className="text-sm font-semibold text-foreground">Document Analysis Engine</p>
                     <p className="text-xs text-muted-foreground">AI-powered clause detection</p>
                   </div>
@@ -335,23 +297,45 @@ export default function Home() {
               className="relative group cursor-pointer order-2 md:order-2"
               onClick={() => setSelectedFeature("creator")}
             >
-              <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5 overflow-hidden">
-                <div className="relative bg-card rounded-xl p-6 h-64 flex flex-col justify-end gap-3">
-                  <div className="space-y-3">
-                    <div className="flex gap-2 justify-start">
-                      <div className="bg-primary/10 rounded-xl px-4 py-2.5 text-xs text-primary max-w-[70%] border border-primary/20">
-                        Create a contract...
-                      </div>
+              <div className="relative bg-card rounded-2xl border border-border shadow-md shadow-primary/5 overflow-hidden min-h-[280px] flex flex-col">
+                {/* Thin header bar */}
+                <div className="flex items-center justify-between bg-muted/40 border-b border-border px-4 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-border" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-border" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-border" />
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground select-none">
+                    AdvocAI — Document Generator
+                  </span>
+                  <div className="w-6" />
+                </div>
+                
+                {/* Body with short simulated conversation */}
+                <div className="p-5 flex-grow flex flex-col justify-center gap-3">
+                  <div className="flex justify-start">
+                    <div className="bg-muted/70 rounded-2xl rounded-tl-none px-3.5 py-2 text-xs text-foreground max-w-[85%] border border-border/50">
+                      Hi! Can you draft an NDA for a California software contractor?
                     </div>
-                    <div className="flex gap-2 justify-end">
-                      <div className="bg-muted rounded-xl px-4 py-2.5 text-xs text-muted-foreground max-w-[70%] border border-border">
-                        Processing details...
-                      </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="bg-primary/10 rounded-2xl rounded-tr-none px-3.5 py-2 text-xs text-primary max-w-[85%] border border-primary/20">
+                      Sure. What should be the duration and scope?
                     </div>
-                    <div className="flex gap-1.5 px-1 py-1">
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="bg-muted/70 rounded-2xl rounded-tl-none px-3.5 py-2 text-xs text-foreground max-w-[85%] border border-border/50">
+                      Let's set it to 2 years with a standard confidentiality scope.
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <div className="bg-primary/10 rounded-2xl rounded-tr-none px-3.5 py-2 text-xs text-primary max-w-[85%] border border-primary/20 flex items-center gap-2">
+                      <span>Drafting NDA...</span>
+                      <div className="flex gap-1">
+                        <div className="w-1 h-1 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
+                        <div className="w-1 h-1 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                        <div className="w-1 h-1 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -365,29 +349,27 @@ export default function Home() {
               className="relative group order-2 md:order-1 cursor-pointer"
               onClick={() => setSelectedFeature("timeline")}
             >
-              <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5 overflow-hidden">
-                <div className="relative bg-card rounded-xl p-6 h-64 flex flex-col justify-center gap-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/25"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground">Current v1.2.3</p>
-                        <p className="text-xs text-muted-foreground">Now</p>
-                      </div>
+              <div className="relative bg-card rounded-2xl border border-border shadow-md shadow-primary/5 overflow-hidden min-h-[280px] flex flex-col justify-center p-6">
+                <div className="space-y-4 max-w-xs mx-auto w-full">
+                  <div className="flex items-center gap-4">
+                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg shadow-green-500/25"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">Current v1.2.3</p>
+                      <p className="text-xs text-muted-foreground">Now</p>
                     </div>
-                    <div className="flex items-center gap-4 opacity-75">
-                      <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">Previous v1.2.2</p>
-                        <p className="text-xs text-muted-foreground">2 hours ago</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-4 opacity-75">
+                    <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Previous v1.2.2</p>
+                      <p className="text-xs text-muted-foreground">2 hours ago</p>
                     </div>
-                    <div className="flex items-center gap-4 opacity-50">
-                      <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-foreground">Previous v1.2.1</p>
-                        <p className="text-xs text-muted-foreground">1 day ago</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center gap-4 opacity-50">
+                    <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Previous v1.2.1</p>
+                      <p className="text-xs text-muted-foreground">1 day ago</p>
                     </div>
                   </div>
                 </div>
@@ -465,19 +447,19 @@ export default function Home() {
               className="relative group cursor-pointer order-2 md:order-2"
               onClick={() => setSelectedFeature("signature")}
             >
-              <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5 overflow-hidden">
-                <div className="relative bg-card rounded-xl p-8 h-64 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-primary">DOCUMENT SIGNATURE</p>
-                    <p className="text-sm text-muted-foreground">Legal Agreement v1.2</p>
+              <div className="relative bg-card rounded-2xl border border-border shadow-md shadow-primary/5 overflow-hidden min-h-[280px] flex flex-col justify-center p-6">
+                <div className="space-y-4 max-w-xs mx-auto w-full">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-primary tracking-wider uppercase">DOCUMENT SIGNATURE</p>
+                    <p className="text-xs text-muted-foreground">Legal Agreement v1.2</p>
                   </div>
-                  <div className="border border-primary/20 rounded-xl h-24 flex items-center justify-center bg-primary/5">
+                  <div className="border border-primary/20 rounded-xl h-20 flex items-center justify-center bg-primary/5">
                     <div className="text-center">
-                      <Shield className="w-7 h-7 text-primary mx-auto mb-2" />
+                      <Shield className="w-6 h-6 text-primary mx-auto mb-1.5" />
                       <p className="text-xs text-primary font-semibold">Digitally Secured</p>
                     </div>
                   </div>
-                  <button className="w-full py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition shadow-sm">
+                  <button className="w-full py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition shadow-sm">
                     Sign Document
                   </button>
                 </div>
@@ -486,16 +468,16 @@ export default function Home() {
           </div>
 
           {/* Feature 5: Document Generator with Version Tracking & E-Signature */}
-          <div className="grid md:grid-cols-2 gap-12 items-center mb-20 border-t border-border pt-20">
+          <div className="grid md:grid-cols-2 gap-12 items-center mb-24 border-t border-border pt-24">
             <div
               className="relative group cursor-pointer order-2 md:order-1"
               onClick={() => setSelectedFeature("gen-track-sign")}
             >
-              <div className="relative bg-card rounded-2xl p-1 border border-border shadow-md shadow-primary/5 overflow-hidden">
-                <div className="relative bg-card rounded-xl p-6 h-64 flex flex-col gap-4">
+              <div className="relative bg-card rounded-2xl border border-border shadow-md shadow-primary/5 overflow-hidden min-h-[280px] flex flex-col justify-center p-6">
+                <div className="space-y-4 max-w-xs mx-auto w-full">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-primary">DOCUMENT GENERATOR</span>
-                    <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded">v1.2.3</span>
+                    <span className="text-[10px] font-bold text-primary tracking-wider uppercase">DOCUMENT GENERATOR</span>
+                    <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded font-medium">v1.2.3</span>
                   </div>
                   <div className="flex gap-2 items-center">
                     <div className="flex-1 h-2 bg-primary/20 rounded-full overflow-hidden">
@@ -504,12 +486,12 @@ export default function Home() {
                     <span className="text-xs text-primary font-mono font-semibold">Version 3</span>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <div className="w-6 h-6 bg-green-500/10 rounded-full flex items-center justify-center">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <div className="w-5 h-5 bg-green-500/10 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                     </div>
                     <span className="text-xs text-green-600 font-semibold">3 Signatures Verified</span>
                   </div>
-                  <div className="mt-auto pt-4 border-t border-border/80">
+                  <div className="pt-3 border-t border-border/80 mt-1">
                     <p className="text-xs text-muted-foreground text-center">Last edited 2 hours ago</p>
                   </div>
                 </div>
@@ -558,9 +540,9 @@ export default function Home() {
         {/* How It Works */}
         <section
           id="how-it-works"
-          className="w-full px-4 sm:px-6 lg:px-8 py-16 md:py-24 border-t border-border"
+          className="w-full px-4 sm:px-6 lg:px-8 py-20 md:py-24 border-t border-border"
         >
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4 font-serif text-foreground">Three Simple Steps to Mastery</h2>
             <p className="text-lg text-muted-foreground">From analysis to generation to signature in minutes</p>
           </div>
@@ -604,8 +586,8 @@ export default function Home() {
         </section>
 
         {/* Footer */}
-        <footer className="border-t border-border relative">
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-16 relative z-10">
+        <footer className="border-t border-border relative py-16">
+          <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid md:grid-cols-5 gap-12 mb-12">
               {/* Brand */}
               <div className="md:col-span-1">
