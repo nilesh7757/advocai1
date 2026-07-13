@@ -161,21 +161,23 @@ function AppContent() {
 
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext'; // Import AuthProvider
+import { ThemeProvider } from './context/ThemeContext'; // Import ThemeProvider
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
   return (
-  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-    <Router>
-      <Toaster position="bottom-right" />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <Router>
+        <Toaster position="bottom-right" />
         <AuthProvider> {/* Wrap AppContent with AuthProvider */}
-          <AppContent />
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </Router>
     </GoogleOAuthProvider>
-
   );
 }
 

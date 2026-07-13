@@ -17,6 +17,7 @@ import {
   Moon
 } from "lucide-react";
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
+import { useTheme } from '../../context/ThemeContext'; // Import useTheme
 
 export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -24,26 +25,7 @@ export default function Navbar() {
   const profileMenuRef = useRef(null);
   const { user, isAuthenticated, logout } = useAuth(); // Use AuthContext
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("theme");
-      if (stored) {
-        return stored === "dark";
-      }
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDarkMode]);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -83,17 +65,57 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-background/90 backdrop-blur-sm fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)]">
+    <nav className={`fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)] transition-colors duration-200 ${isMenuOpen ? 'bg-background' : 'bg-background/90 backdrop-blur-sm'}`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
-        <div className="flex items-center justify-between h-17">
-          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-            <svg className="w-6 h-6 text-primary transition-transform duration-300 group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <polyline points="9 15 11 17 15 13" />
+        <div className="flex items-center justify-between h-full">
+          <Link to="/" className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0">
+            <svg 
+              className="w-7 h-7 text-primary transition-transform duration-300 group-hover:scale-105" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Left leg of A (Document border angle) */}
+              <path 
+                d="M6 20L12 4" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Right leg of A (Document border angle) */}
+              <path 
+                d="M15 8L19.5 20" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Abstract Document Fold Flap at the apex */}
+              <path 
+                d="M12 4L15 8H12V4Z" 
+                fill="currentColor" 
+                opacity="0.35"
+              />
+              {/* Fold edge line */}
+              <path 
+                d="M12 4L15 8" 
+                stroke="currentColor" 
+                strokeWidth="1.2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Checkmark Crossbar (Legal verification) */}
+              <path 
+                d="M8 14.5L11 17.5L17.5 9.5" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
             </svg>
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              Advoc<span className="text-primary font-extrabold">AI</span>
+            <span>
+              Advoc<span className="text-primary">AI</span>
             </span>
           </Link>
           
@@ -125,7 +147,7 @@ export default function Navbar() {
                   ) : (
                     link.label
                   )}
-                  <span className="absolute bottom-1 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-primary group-hover:w-full transition-all duration-300"></span>
                 </Link>
               )
             ))}
@@ -134,7 +156,7 @@ export default function Navbar() {
           {/* Desktop Auth Section */}
           <div className="hidden lg:flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
             <Button
-              onClick={() => setIsDarkMode(!isDarkMode)}
+              onClick={toggleTheme}
               variant="ghost"
               size="icon"
               className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
@@ -175,7 +197,7 @@ export default function Navbar() {
           {/* Mobile Menu Button & Theme Toggle */}
           <div className="lg:hidden flex items-center space-x-2">
             <Button
-              onClick={() => setIsDarkMode(!isDarkMode)}
+              onClick={toggleTheme}
               variant="ghost"
               size="icon"
               className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
@@ -196,7 +218,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Backdrop */}
       <div 
-        className={`lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+        className={`lg:hidden fixed top-[var(--navbar-height)] inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsMenuOpen(false)}
@@ -204,7 +226,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Sidebar Drawer */}
       <div 
-        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-card/95 backdrop-blur-xl border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform ${
+        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -225,16 +247,56 @@ export default function Navbar() {
         <div className="p-5 border-b border-border/40 flex items-center justify-between flex-shrink-0">
           <Link 
             to="/" 
-            className="flex items-center gap-2 group flex-shrink-0"
+            className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0"
             onClick={() => setIsMenuOpen(false)}
           >
-            <svg className="w-6 h-6 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <polyline points="9 15 11 17 15 13" />
+            <svg 
+              className="w-7 h-7 text-primary" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Left leg of A (Document border angle) */}
+              <path 
+                d="M6 20L12 4" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Right leg of A (Document border angle) */}
+              <path 
+                d="M15 8L19.5 20" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Abstract Document Fold Flap at the apex */}
+              <path 
+                d="M12 4L15 8H12V4Z" 
+                fill="currentColor" 
+                opacity="0.35"
+              />
+              {/* Fold edge line */}
+              <path 
+                d="M12 4L15 8" 
+                stroke="currentColor" 
+                strokeWidth="1.2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Checkmark Crossbar (Legal verification) */}
+              <path 
+                d="M8 14.5L11 17.5L17.5 9.5" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
             </svg>
-            <span className="text-xl font-bold font-serif tracking-tight text-foreground">
-              Advoc<span className="text-primary font-sans font-extrabold">AI</span>
+            <span>
+              Advoc<span className="text-primary">AI</span>
             </span>
           </Link>
           <button
