@@ -141,7 +141,7 @@ export default function Home() {
                     <span className="relative inline-block px-1">
                       Minutes
                       <svg 
-                        className="absolute left-0 -bottom-2 w-full h-3 text-primary" 
+                        className="absolute left-0 -bottom-1.5 w-full h-3 text-primary" 
                         viewBox="0 0 100 10" 
                         preserveAspectRatio="none" 
                         fill="none" 
@@ -149,7 +149,7 @@ export default function Home() {
                         strokeWidth="3.5" 
                         strokeLinecap="round"
                       >
-                        <path d="M 3 2 Q 50 9 97 2" />
+                        <path d="M 4 8 Q 48 1 96 9" />
                       </svg>
                     </span>
                     , Not Hours
