@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
+from rest_framework.response import Response, HttpResponse
 from rest_framework.pagination import PageNumberPagination
 from mongoengine import DoesNotExist
 from authentication.models import User
@@ -9,6 +9,7 @@ from .models import LawyerProfile, LawyerConnectionRequest, LawyerReview
 from chat.models import ChatConversation, ChatMessage
 import cloudinary
 import cloudinary.uploader
+import csv
 from uuid import uuid4
 from datetime import datetime
 
@@ -245,6 +246,12 @@ def lawyer_connection_update_view(request, connection_id):
     new_status = serializer.validated_data['status']
     connection_request.status = new_status
     connection_request.message = serializer.validated_data.get('message', connection_request.message)
+
+    response_message = serializer.validated_data.get('response_message', '').strip()
+    if response_message:
+        suffix = f"\n\n[Response from lawyer]: {response_message}" if connection_request.message else f"[Response from lawyer]: {response_message}"
+        connection_request.message = (connection_request.message + suffix).strip()
+
     connection_request.save()
 
     # Create chat conversation when lawyer accepts
@@ -599,3 +606,76 @@ def my_lawyer_profile_view(request):
 
     profile.save()
     return Response(LawyerProfileSerializer(profile).data)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_quick_reply_templates_view(request):
+    """Let a lawyer update their quick reply templates."""
+    if not request.user.is_lawyer:
+        return Response({'error': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    profile = LawyerProfile.objects(user=request.user).first()
+    if not profile:
+        return Response({'error': 'Lawyer profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    templates = request.data.get('quick_reply_templates')
+    if templates is None:
+        return Response({'error': 'quick_reply_templates is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not isinstance(templates, list):
+        return Response({'error': 'quick_reply_templates must be a list.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    for t in templates:
+        if not isinstance(t, dict) or 'label' not in t or 'message' not in t:
+            return Response({'error': 'Each template must have "label" and "message" fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile.quick_reply_templates = templates
+    profile.save()
+
+    return Response({
+        'message': 'Quick reply templates updated.',
+        'quick_reply_templates': profile.quick_reply_templates,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_consultations_view(request):
+    """Export accepted consultations as CSV for the authenticated lawyer."""
+    if not request.user.is_lawyer:
+        return Response({'error': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+    qs = LawyerConnectionRequest.objects(lawyer=request.user, status='accepted').order_by('-created_at')
+
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            qs = qs.filter(created_at__gte=start_dt)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            qs = qs.filter(created_at__lte=end_dt)
+        except ValueError:
+            pass
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="consultations_export_{datetime.utcnow().strftime("%Y%m%d")}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Client Name', 'Client Email', 'Date Requested', 'Preferred Time', 'Case Status', 'Message'])
+
+    for req in qs:
+        client_name = (req.client.name if hasattr(req.client, 'name') else '') or req.client.username or ''
+        client_email = (req.client.email if hasattr(req.client, 'email') else '') or ''
+        created = req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else ''
+        pref_time = req.preferred_time.strftime('%Y-%m-%d %H:%M') if req.preferred_time else ''
+        case_status = req.case_status or ''
+        message = req.message or ''
+        writer.writerow([client_name, client_email, created, pref_time, case_status, message])
+
+    return response

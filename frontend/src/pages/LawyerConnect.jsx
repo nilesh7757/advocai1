@@ -260,14 +260,14 @@ const LawyerConnect = () => {
 
         {/* Lawyers Grid */}
         {loading && (
-          <div className="text-center text-gray-400">Loading vetted lawyers...</div>
+          <div className="text-center text-muted-foreground">Loading vetted lawyers...</div>
         )}
         {error && (
-          <div className="text-center text-red-400">{error}</div>
+          <div className="text-center text-destructive">{error}</div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {!loading && !error && filteredLawyers.length === 0 && (
-            <div className="col-span-full text-center text-gray-400">
+            <div className="col-span-full text-center text-muted-foreground">
               {selectedSpecialization 
                 ? `No lawyers found with specialization "${selectedSpecialization}".`
                 : 'No verified lawyers are available yet. Please check back soon.'}
@@ -276,7 +276,7 @@ const LawyerConnect = () => {
           {filteredLawyers.map((lawyer, index) => (
             <Card
               key={lawyer.id || lawyer.user?.id || index}
-              className="bg-card backdrop-blur-sm border-border hover:border-primary/60 transition-all duration-200 p-5 flex flex-col group animate-fade-in-up"
+              className="bg-card border-border hover:border-primary/60 transition-all duration-200 p-5 flex flex-col group animate-fade-in-up"
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <CardHeader className="flex flex-col items-center text-center p-0 mb-4">

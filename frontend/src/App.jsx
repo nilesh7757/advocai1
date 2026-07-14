@@ -17,7 +17,6 @@ import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import LawyerConnect from "./pages/LawyerConnect";
 import MyDocuments from "./pages/MyDocuments";
 import DocumentCreation from "./pages/DocumentCreation";
-import DocumentVersions from "./pages/DocumentVersions"; // Added this import
 import SharedDocumentView from "./pages/SharedDocumentView";
 import ChatList from "./pages/ChatList";
 import Chat from "./pages/Chat";
@@ -69,14 +68,6 @@ function AppContent() {
             element={(
               <ProtectedRoute>
                 <DocumentCreation />
-              </ProtectedRoute>
-            )}
-          />
-          <Route
-            path="/document-versions/:id"
-            element={(
-              <ProtectedRoute>
-                <DocumentVersions />
               </ProtectedRoute>
             )}
           />

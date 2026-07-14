@@ -14,6 +14,8 @@ from .views import (
     update_case_status_view,
     lawyer_match_view,
     my_lawyer_profile_view,
+    update_quick_reply_templates_view,
+    export_consultations_view,
 )
 
 urlpatterns = [
@@ -22,6 +24,8 @@ urlpatterns = [
     path('dashboard/', lawyer_dashboard_view, name='lawyer_dashboard'),
     path('my-profile/', my_lawyer_profile_view, name='my_lawyer_profile'),
     path('availability/', update_lawyer_availability_view, name='update_lawyer_availability'),
+    path('quick-replies/', update_quick_reply_templates_view, name='update_quick_reply_templates'),
+    path('export-consultations/', export_consultations_view, name='export_consultations'),
     path('connections/', connection_requests_list_view, name='connection_requests_list'),
     path('connections/<str:connection_id>/', lawyer_connection_update_view, name='lawyer_connection_update'),
     path('connections/<str:connection_id>/withdraw/', withdraw_connection_view, name='withdraw_connection'),

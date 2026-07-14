@@ -20,6 +20,7 @@ class LawyerProfileSerializer(serializers.Serializer):
     verification_status = serializers.CharField(read_only=True)
     verification_notes = serializers.CharField(read_only=True)
     availability = serializers.JSONField(required=False)
+    quick_reply_templates = serializers.ListField(child=serializers.DictField(), required=False)
     # Computed fields (injected by views)
     average_rating = serializers.FloatField(read_only=True, required=False)
     review_count = serializers.IntegerField(read_only=True, required=False)
@@ -47,6 +48,7 @@ class LawyerConnectionRequestSerializer(serializers.Serializer):
 class LawyerConnectionStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=['accepted', 'declined'])
     message = serializers.CharField(required=False, allow_blank=True)
+    response_message = serializers.CharField(required=False, allow_blank=True)
 
 
 class LawyerReviewSerializer(serializers.Serializer):

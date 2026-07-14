@@ -36,6 +36,7 @@ class LawyerProfile(Document):
     verification_notes = StringField(default='')
     verified_at = DateTimeField()
     availability = ListField(DictField(), default=list)
+    quick_reply_templates = ListField(DictField(), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
