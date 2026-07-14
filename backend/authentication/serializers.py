@@ -472,3 +472,36 @@ class AddPasswordSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['new_password2']:
             raise serializers.ValidationError({"new_password": "New passwords didn't match."})
         return attrs
+
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+
+class MongoEngineTokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    Custom TokenRefreshSerializer to ensure user_id, email, and token_version 
+    are copied over to the new access token.
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Instantiate RefreshToken to inspect the payload claims
+        refresh = RefreshToken(attrs['refresh'])
+        
+        # Extract custom claims from refresh token
+        user_id = refresh.get('user_id')
+        email = refresh.get('email')
+        token_version = refresh.get('token_version', 0)
+        
+        # Access token instance generated from refresh token
+        access = refresh.access_token
+        
+        if user_id:
+            access['user_id'] = user_id
+        if email:
+            access['email'] = email
+        access['token_version'] = token_version
+        
+        data['access'] = str(access)
+        return data
+

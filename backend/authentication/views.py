@@ -42,11 +42,18 @@ def get_tokens_for_user(user):
     refresh = RefreshToken()
     refresh["user_id"] = str(user.id)
     refresh["email"] = user.email
-    refresh["token_version"] = getattr(user, "token_version", 0)
+    token_version = getattr(user, "token_version", 0)
+    refresh["token_version"] = token_version
+    
+    # Explicitly add claims to the access token as well
+    access = refresh.access_token
+    access["user_id"] = str(user.id)
+    access["email"] = user.email
+    access["token_version"] = token_version
 
     return {
         "refresh": str(refresh),
-        "access": str(refresh.access_token),
+        "access": str(access),
     }
 
 
@@ -1437,3 +1444,14 @@ def admin_unban_user(request, user_id):
         'is_active': user.is_active,
         'warning_count': user.warning_count
     }, status=status.HTTP_200_OK)
+
+
+from rest_framework_simplejwt.views import TokenRefreshView
+from .serializers import MongoEngineTokenRefreshSerializer
+
+class MongoEngineTokenRefreshView(TokenRefreshView):
+    """
+    Custom TokenRefreshView to use MongoEngineTokenRefreshSerializer.
+    """
+    serializer_class = MongoEngineTokenRefreshSerializer
+

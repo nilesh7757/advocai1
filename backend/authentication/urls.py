@@ -1,5 +1,5 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
+# Custom MongoEngine token refresh view import
 from .views import (
     signup_view, 
     login_view, 
@@ -28,6 +28,7 @@ from .views import (
     admin_warn_user,
     admin_ban_user,
     admin_unban_user,
+    MongoEngineTokenRefreshView,
 )
 
 urlpatterns = [
@@ -44,7 +45,7 @@ urlpatterns = [
     path('delete-account/', delete_account_view, name='delete_account'),
     path('forgot-password/', forgot_password_view, name='forgot_password'),
     path('reset-password/', reset_password_view, name='reset_password'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', MongoEngineTokenRefreshView.as_view(), name='token_refresh'),
     path('lawyers/', lawyer_list_view, name='lawyer_list'),
     path('lawyers/<str:lawyer_id>/', lawyer_detail_view, name='lawyer_detail'),
     path('lawyers/<str:lawyer_id>/connect/', connect_with_lawyer_view, name='connect_lawyer'),

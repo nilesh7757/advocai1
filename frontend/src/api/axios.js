@@ -30,6 +30,20 @@ instance.interceptors.request.use(
     }
 );
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
 // Response interceptor to handle token refreshing
 instance.interceptors.response.use(
     (response) => response,
@@ -38,14 +52,31 @@ instance.interceptors.response.use(
 
         // If error status is 401 and it's not a retry of the refresh token request
         if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true; // Mark request as retried
+            if (isRefreshing) {
+                return new Promise(function(resolve, reject) {
+                    failedQueue.push({ resolve, reject });
+                })
+                .then(token => {
+                    originalRequest.headers.Authorization = `Bearer ${token}`;
+                    return instance(originalRequest);
+                })
+                .catch(err => {
+                    return Promise.reject(err);
+                });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
 
             const refreshToken = localStorage.getItem('refresh_token');
 
             if (refreshToken) {
                 try {
+                    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/';
+                    const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
                     const response = await axios.post(
-                        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/'}api/auth/token/refresh/`,
+                        `${formattedBaseUrl}api/auth/token/refresh/`,
                         { refresh: refreshToken }
                     );
 
@@ -55,21 +86,26 @@ instance.interceptors.response.use(
                     // Update the Authorization header for the original request
                     originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
+                    processQueue(null, newAccessToken);
+                    isRefreshing = false;
+
                     // Retry the original request
                     return instance(originalRequest);
                 } catch (refreshError) {
+                    processQueue(refreshError, null);
+                    isRefreshing = false;
                     console.error('Token refresh failed:', refreshError);
                     // If refresh token is invalid or expired, log out the user
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
-                    // Optionally, redirect to login page or show a message
-                    // window.location.href = '/login'; // This might cause issues with React Router, better to handle in AuthContext
+                    window.dispatchEvent(new Event('auth_logout'));
                     return Promise.reject(refreshError);
                 }
             } else {
                 // No refresh token available, just reject the error
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
+                window.dispatchEvent(new Event('auth_logout'));
                 return Promise.reject(error);
             }
         }

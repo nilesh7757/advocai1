@@ -34,6 +34,21 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      navigate('/login');
+    };
+
+    window.addEventListener('auth_logout', handleAuthLogout);
+    return () => {
+      window.removeEventListener('auth_logout', handleAuthLogout);
+    };
+  }, [navigate]);
+
   const login = async (email, password) => {
     setLoading(true);
     try {
