@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/Components/ui/button";
 import { 
   User, 
@@ -24,6 +24,7 @@ import axios from '../../api/axios';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
@@ -114,7 +115,7 @@ export default function Navbar() {
     <nav className={`fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)] transition-colors duration-200 ${isMenuOpen ? 'bg-background' : 'bg-background/90 backdrop-blur-sm'}`}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex items-center justify-between h-full">
-          <Link to="/" className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0">
+          <Link to="/" className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0 mr-6 lg:mr-8">
             <svg 
               className="w-7 h-7 text-primary transition-transform duration-300 group-hover:scale-105" 
               viewBox="0 0 24 24" 
@@ -166,37 +167,27 @@ export default function Navbar() {
           </Link>
           
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-0.5 xl:space-x-1.5">
-            {navLinks.map((link, index) => (
-              ((!link.requiresAuth) || isAuthenticated) && (
+          <div className="hidden lg:flex items-center gap-1 xl:gap-1.5">
+            {navLinks.map((link, index) => {
+              const isActive = location.pathname === link.to;
+              const showLink = !link.requiresAuth || isAuthenticated;
+              if (!showLink) return null;
+              return (
                 <Link 
                   to={link.to} 
                   key={index} 
-                  className="text-muted-foreground hover:text-foreground px-2.5 xl:px-3.5 py-1.5 text-xs xl:text-sm font-semibold rounded-lg hover:bg-muted transition-all duration-150 relative group"
+                  className={
+                    "min-w-[5rem] xl:min-w-[6rem] px-3 xl:px-4 py-1.5 text-xs xl:text-sm font-semibold rounded-lg transition-all duration-150 relative group text-center " +
+                    (isActive
+                      ? "bg-primary/10 text-foreground font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted")
+                  }
                 >
-                  {link.label === "Document Analyzer" ? (
-                    <>
-                      <span className="hidden xl:inline">Document </span>Analyzer
-                    </>
-                  ) : link.label === "Document Generator" ? (
-                    <>
-                      <span className="hidden xl:inline">Document </span>Generator
-                    </>
-                  ) : link.label === "My Documents" ? (
-                    <>
-                      <span className="hidden xl:inline">My </span>Documents
-                    </>
-                  ) : link.label === "Lawyer Dashboard" ? (
-                    <>
-                      <span className="hidden xl:inline">Lawyer </span>Dashboard
-                    </>
-                  ) : (
-                    link.label
-                  )}
-                  <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-primary group-hover:w-full transition-all duration-300"></span>
+                  {link.label}
+                  <span className={"absolute bottom-0 left-0 h-[2px] bg-primary transition-all duration-300 " + (isActive ? "w-full" : "w-0 group-hover:w-full")}></span>
                 </Link>
-              )
-            ))}
+              );
+            })}
           </div>
 
           {/* Desktop Auth Section */}
@@ -287,7 +278,7 @@ export default function Navbar() {
               </>
             ) : (
               <Link to="/login">
-                <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary hover:to-secondary text-white shadow-md shadow-primary/30 hover:shadow-lg shadow-primary/40 transition-all duration-200">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
                   Login
                 </Button>
               </Link>
@@ -296,6 +287,60 @@ export default function Navbar() {
 
           {/* Mobile Menu Button & Theme Toggle */}
           <div className="lg:hidden flex items-center space-x-2">
+            {isAuthenticated && (
+              <div ref={notificationsRef} className="relative">
+                <Button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  variant="ghost"
+                  size="icon"
+                  className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors relative flex items-center justify-center flex-shrink-0 cursor-pointer"
+                  title="Notifications"
+                >
+                  <Bell size={16} />
+                  {notifications.filter(n => !n.is_read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                      {notifications.filter(n => !n.is_read).length}
+                    </span>
+                  )}
+                </Button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 w-72 py-2 select-none overflow-hidden max-h-80 overflow-y-auto custom-scrollbar">
+                    <div className="px-4 py-2 border-b border-border flex justify-between items-center">
+                      <span className="text-xs font-bold text-foreground">Notifications</span>
+                      {notifications.filter(n => !n.is_read).length > 0 && (
+                        <span className="text-[10px] text-muted-foreground">{notifications.filter(n => !n.is_read).length} unread</span>
+                      )}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic text-center py-6">No notifications yet.</p>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => markAsRead(n.id, n.document_id)}
+                            className={`p-3 text-left cursor-pointer hover:bg-muted/50 transition-colors flex items-start gap-2.5 ${
+                              !n.is_read ? 'bg-muted/20 font-semibold' : ''
+                            }`}
+                          >
+                            <div className="flex-1 space-y-1">
+                              <p className="text-xs text-foreground font-medium leading-normal">{n.message}</p>
+                              <p className="text-[9px] text-muted-foreground">
+                                {n.created_at ? new Date(n.created_at).toLocaleDateString() : 'N/A'}
+                              </p>
+                            </div>
+                            {!n.is_read && (
+                              <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <Button
               onClick={toggleTheme}
               variant="ghost"
@@ -326,7 +371,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Sidebar Drawer */}
       <div 
-        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform ${
+        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform overflow-hidden ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -434,7 +479,7 @@ export default function Navbar() {
             const showLink = (!link.requiresAuth) || isAuthenticated;
             if (!showLink) return null;
             
-            const isActive = window.location.pathname === link.to;
+            const isActive = location.pathname === link.to;
             const Icon = link.icon;
             
             return (
@@ -461,27 +506,19 @@ export default function Navbar() {
         </div>
 
         {/* Footer / Auth actions in Sidebar */}
-        <div className="p-5 border-t border-border flex-shrink-0 bg-muted/20">
+        <div className="p-4 border-t border-border flex-shrink-0 bg-muted/20">
           {isAuthenticated ? (
-            <div className="space-y-2">
-              <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="outline" className="w-full justify-start border-border hover:bg-muted h-11 rounded-lg">
-                  <User size={16} className="mr-2" />
-                  View Profile
-                </Button>
-              </Link>
-              <Button 
-                onClick={() => { logout(); setIsMenuOpen(false); }} 
-                variant="destructive" 
-                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-150 h-11 rounded-lg"
-              >
-                <LogOut size={16} className="mr-2" />
-                Logout
-              </Button>
-            </div>
+            <Button 
+              onClick={() => { logout(); setIsMenuOpen(false); }} 
+              variant="destructive" 
+              className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-150 h-11 rounded-lg text-sm"
+            >
+              <LogOut size={16} className="mr-2 flex-shrink-0" />
+              <span className="truncate">Logout</span>
+            </Button>
           ) : (
             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-              <Button className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/95 hover:to-secondary/95 text-white shadow-md shadow-primary/20 hover:shadow-lg shadow-primary/30 transition-all h-11 rounded-xl font-medium">
+              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all h-11 rounded-xl font-medium">
                 Login
               </Button>
             </Link>

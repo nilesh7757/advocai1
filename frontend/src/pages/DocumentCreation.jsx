@@ -22,6 +22,7 @@ import CommentList from '../Components/Comments/CommentList';
 import MenuBar from '../Components/MenuBar'; // Import the MenuBar component
 import VersionsSidebar from '../Components/VersionsSidebar';
 import SignatureModal from '../Components/SignatureModal'; // Import SignatureModal
+import AppSidebar from '../Components/AppSidebar';
 
 // Helper function to convert Markdown to HTML using a headless Tiptap editor
 const convertMarkdownToHtml = (markdownContent) => {
@@ -889,84 +890,76 @@ const DocumentCreation = () => {
     <div className="flex relative h-full bg-background overflow-hidden overflow-x-hidden">
       {/* Left Sidebar - Chat */}
       {!isZenMode && (
-        <div className={`transition-all duration-300 bg-card border-r border-border flex flex-col fixed lg:relative z-30 lg:z-10 h-full top-0 bottom-0 left-0 ${
-          sidebarOpen 
-            ? 'translate-x-0 w-80 opacity-100' 
-            : '-translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:pointer-events-none'
-        }`}>
-          <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0 h-16 bg-muted/10">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-primary" />
-              <span className="text-foreground font-semibold text-sm">Chat History</span>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-              title="Collapse chat"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
-            {messages.filter(msg => msg.type !== 'document_context').map((msg, index) => (
-              <div key={index} className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
-                {msg.sender === 'bot' && (
+        <AppSidebar
+          side="left"
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpenCollapsed={() => setSidebarOpen(true)}
+          icon={MessageCircle}
+          title="Chat History"
+          collapsedRail={true}
+        >
+          <div className="flex flex-col h-full overflow-hidden bg-background/30 select-none">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
+              {messages.filter(msg => msg.type !== 'document_context').map((msg, index) => (
+                <div key={index} className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
+                  {msg.sender === 'bot' && (
+                    <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+                      <Bot className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <div className={`px-3 py-2 rounded-lg max-w-xs text-xs leading-relaxed ${
+                    msg.sender === 'user'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted text-foreground border border-border'
+                  }`}>
+                    <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>
+                  </div>
+                  {msg.sender === 'user' && (
+                    <div className="w-6 h-6 flex-shrink-0 rounded-full bg-muted flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isGenerating && (
+                <div className="flex gap-2">
                   <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
-                    <Bot className="w-3.5 h-3.5" />
+                    <Bot className="w-3.5 h-3.5 animate-pulse" />
                   </div>
-                )}
-                <div className={`px-3 py-2 rounded-lg max-w-xs text-xs leading-relaxed ${
-                  msg.sender === 'user'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted text-foreground border border-border'
-                }`}>
-                  <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>
-                </div>
-                {msg.sender === 'user' && (
-                  <div className="w-6 h-6 flex-shrink-0 rounded-full bg-muted flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isGenerating && (
-              <div className="flex gap-2">
-                <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
-                  <Bot className="w-3.5 h-3.5 animate-pulse" />
-                </div>
-                <div className="px-3 py-2 rounded-lg bg-muted border border-border">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="px-3 py-2 rounded-lg bg-muted border border-border">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="p-4 border-t border-border space-y-2">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask for changes..."
-                className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10 text-sm"
-                disabled={isGenerating}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={isGenerating || !chatMessage.trim()}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-10 w-10 p-0 cursor-pointer flex items-center justify-center"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
+            <div className="p-4 border-t border-border bg-card space-y-2 mt-auto">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask for changes..."
+                  className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10 text-sm"
+                  disabled={isGenerating}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={isGenerating || !chatMessage.trim()}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-10 w-10 p-0 cursor-pointer flex items-center justify-center"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </AppSidebar>
       )}
 
       {/* Main Content */}
@@ -1353,85 +1346,80 @@ const DocumentCreation = () => {
       </div>
 
       {/* Right Sidebar - Tabbed Comments & Versions */}
-      <div className={`transition-all duration-300 bg-card border-l border-border flex flex-col fixed lg:relative z-30 lg:z-10 h-full top-0 bottom-0 right-0 ${
-        rightSidebarOpen 
-          ? 'translate-x-0 w-80 opacity-100' 
-          : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:pointer-events-none'
-      }`}>
-        {rightSidebarOpen && (
-          <div className="flex flex-col h-full">
-            {/* Sidebar Tab Header */}
-            <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0 bg-muted/20">
-              <div className="flex gap-1 bg-muted p-1 rounded-lg">
-                {mongoConversationId && (
-                  <>
-                    <button
-                      onClick={() => setRightSidebarTab('comments')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        rightSidebarTab === 'comments'
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Comments
-                    </button>
-                    <button
-                      onClick={() => setRightSidebarTab('versions')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        rightSidebarTab === 'versions'
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Versions
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => setRightSidebarTab('clause-library')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                    (mongoConversationId ? rightSidebarTab : 'clause-library') === 'clause-library'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Clause Library
-                </button>
-              </div>
+      <AppSidebar
+        side="right"
+        isOpen={rightSidebarOpen}
+        onClose={() => setRightSidebarOpen(false)}
+        onOpenCollapsed={() => setRightSidebarOpen(true)}
+        icon={BookOpen}
+        title="Document Workspace"
+        collapsedRail={true}
+      >
+        <div className="flex flex-col h-full overflow-hidden bg-background/30 select-none">
+          {/* Sidebar Tab Header */}
+          <div className="p-2 border-b border-border flex items-center justify-center flex-shrink-0 bg-muted/20">
+            <div className="flex gap-1 bg-muted p-1 rounded-lg">
+              {mongoConversationId && (
+                <>
+                  <button
+                    onClick={() => setRightSidebarTab('comments')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      rightSidebarTab === 'comments'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Comments
+                  </button>
+                  <button
+                    onClick={() => setRightSidebarTab('versions')}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      rightSidebarTab === 'versions'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Versions
+                  </button>
+                </>
+              )}
               <button
-                onClick={() => setRightSidebarOpen(false)}
-                className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-                title="Close sidebar"
+                onClick={() => setRightSidebarTab('clause-library')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  (mongoConversationId ? rightSidebarTab : 'clause-library') === 'clause-library'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <X className="w-4 h-4" />
+                Clause Library
               </button>
             </div>
-
-            {/* Sidebar Tab Content */}
-            <div className="flex-grow overflow-hidden flex flex-col">
-              {(mongoConversationId ? rightSidebarTab : 'clause-library') === 'comments' && mongoConversationId ? (
-                <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
-                  <CommentList documentId={mongoConversationId} />
-                </div>
-              ) : (mongoConversationId ? rightSidebarTab : 'clause-library') === 'versions' && mongoConversationId ? (
-                <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
-                  <VersionsSidebar
-                    conversationId={mongoConversationId}
-                    onSelectVersion={handleSelectVersion}
-                    onClose={() => setRightSidebarOpen(false)}
-                    currentVersion={currentVersion}
-                    onDeleteVersion={handleDeleteVersion}
-                  />
-                </div>
-              ) : (
-                <div className="flex-grow overflow-hidden flex flex-col h-full">
-                  <ClauseLibraryPanel editor={editor} setIsEditing={setIsEditing} />
-                </div>
-              )}
-            </div>
           </div>
-        )}
-      </div>
+
+          {/* Sidebar Tab Content */}
+          <div className="flex-grow overflow-hidden flex flex-col">
+            {(mongoConversationId ? rightSidebarTab : 'clause-library') === 'comments' && mongoConversationId ? (
+              <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
+                <CommentList documentId={mongoConversationId} />
+              </div>
+            ) : (mongoConversationId ? rightSidebarTab : 'clause-library') === 'versions' && mongoConversationId ? (
+              <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
+                <VersionsSidebar
+                  conversationId={mongoConversationId}
+                  onSelectVersion={handleSelectVersion}
+                  onClose={() => setRightSidebarOpen(false)}
+                  currentVersion={currentVersion}
+                  onDeleteVersion={handleDeleteVersion}
+                />
+              </div>
+            ) : (
+              <div className="flex-grow overflow-hidden flex flex-col h-full">
+                <ClauseLibraryPanel editor={editor} setIsEditing={setIsEditing} />
+              </div>
+            )}
+          </div>
+        </div>
+      </AppSidebar>
 
 
       {isShareModalOpen && (
