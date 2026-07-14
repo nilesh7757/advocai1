@@ -678,9 +678,9 @@ export default function Home() {
                 <h4 className="text-sm font-bold text-foreground mb-4">Company</h4>
                 <ul className="space-y-2">
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/about" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       About
-                    </span>
+                    </Link>
                   </li>
                   <li>
                     <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">

@@ -16,7 +16,8 @@ import {
   Sun,
   Moon,
   Bell,
-  Check
+  Check,
+  Info
 } from "lucide-react";
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
 import { useTheme } from '../../context/ThemeContext'; // Import useTheme
@@ -105,6 +106,7 @@ export default function Navbar() {
     { to: "/lawyer-connect", label: "Connect", icon: Users },
     { to: "/my-documents", label: "My Documents", icon: FolderOpen },
     { to: "/chat", label: "Chat", requiresAuth: true, icon: MessageSquare },
+    { to: "/about", label: "About", icon: Info },
   ];
 
   if (isAuthenticated && user?.role === 'lawyer') {

@@ -18,6 +18,7 @@ import LawyerConnect from "./pages/LawyerConnect";
 import MyDocuments from "./pages/MyDocuments";
 import DocumentCreation from "./pages/DocumentCreation";
 import SharedDocumentView from "./pages/SharedDocumentView";
+import About from "./pages/About";
 import ChatList from "./pages/ChatList";
 import Chat from "./pages/Chat";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -39,6 +40,7 @@ function AppContent() {
       >
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
           <Route
             path="/document-analyser"
             element={(
@@ -121,11 +123,7 @@ function AppContent() {
           />
           <Route
             path="/documentShare/:id"
-            element={(
-              <ProtectedRoute>
-                <SharedDocumentView />
-              </ProtectedRoute>
-            )}
+            element={<SharedDocumentView />}
           />
           <Route
             path="/chat"
