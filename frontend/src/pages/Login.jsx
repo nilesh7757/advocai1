@@ -118,7 +118,17 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      {/* Subtle dot-grid background */}
+      {/* Video background — muted, desaturated, dimmed loop */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none grayscale opacity-[0.15] hidden sm:block"
+        src="https://videos.pexels.com/video-files/5311423/5311423-hd_1280_720_30fps.mp4"
+      />
+
+      {/* Dot-grid fallback (visible while video loads, and always on mobile) */}
       <div
         className="absolute inset-0 pointer-events-none opacity-40"
         style={{
