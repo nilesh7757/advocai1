@@ -25,6 +25,11 @@ class User(Document):
     cover_photo = StringField(max_length=255, default='') # Added cover photo field
     password = StringField(required=True)
     phone = StringField(max_length=20, default='')
+    notification_preferences = DictField(default=lambda: {
+        'mentions': True,
+        'lawyer_updates': True,
+        'document_shares': True,
+    })
     
     # Authentication fields
     is_active = BooleanField(default=True)
@@ -44,6 +49,12 @@ class User(Document):
     otp_code = StringField(max_length=6)
     otp_created_at = DateTimeField()
     
+    # Two-factor authentication
+    two_factor_enabled = BooleanField(default=False)
+
+    # Token version for instant invalidation of all sessions
+    token_version = IntField(default=0)
+
     # Timestamps
     date_joined = DateTimeField(default=datetime.now)
     last_login = DateTimeField()

@@ -31,11 +31,18 @@ class UserSerializer(serializers.Serializer):
             'cover_photo': instance.cover_photo, # Added cover_photo
             'auth_provider': instance.auth_provider,
             'date_joined': instance.date_joined,
+            'last_login': instance.last_login,
             'phone': instance.phone,
             'role': instance.role,
+            'notification_preferences': getattr(instance, 'notification_preferences', {
+                'mentions': True,
+                'lawyer_updates': True,
+                'document_shares': True,
+            }),
             'is_verified': instance.is_verified,
             'is_lawyer_verified': instance.is_lawyer_verified,
             'lawyer_verification_status': instance.lawyer_verification_status,
+            'two_factor_enabled': getattr(instance, 'two_factor_enabled', False),
             'has_password': self.get_has_password(instance)
         }
 
@@ -333,6 +340,11 @@ class GoogleAuthSerializer(serializers.Serializer):
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     otp_code = serializers.CharField(required=True, max_length=6, min_length=6)
+    purpose = serializers.ChoiceField(
+        choices=['signup', 'login_2fa'],
+        default='signup',
+        required=False,
+    )
 
 
 class ResendOTPSerializer(serializers.Serializer):
@@ -343,18 +355,26 @@ class UserProfileSerializer(serializers.Serializer):
     """Serializer for updating user profile"""
 
     name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    notification_preferences = serializers.DictField(required=False)
     profile_picture = serializers.URLField(required=False, allow_blank=True, max_length=255)
     cover_photo = serializers.URLField(required=False, allow_blank=True, max_length=255) # Added cover_photo
     role = serializers.CharField(read_only=True)
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get("name", instance.name)
+        instance.phone = validated_data.get("phone", instance.phone)
         instance.profile_picture = validated_data.get(
             "profile_picture", instance.profile_picture
         )
         instance.cover_photo = validated_data.get(
             "cover_photo", instance.cover_photo
-        )  # Added cover_photo
+        )
+        if "notification_preferences" in validated_data:
+            prefs = validated_data["notification_preferences"]
+            current = getattr(instance, 'notification_preferences', {}) or {}
+            merged = {**current, **prefs}
+            instance.notification_preferences = merged
         instance.save()
         return instance
 

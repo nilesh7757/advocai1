@@ -8,6 +8,7 @@ class MongoEngineJWTAuthentication(JWTAuthentication):
     def get_user(self, validated_token):
         """
         Attempts to find and return a user using the given validated token.
+        Rejects the token if its token_version doesn't match the user's current version.
         """
         try:
             user_id = validated_token[api_settings.USER_ID_CLAIM]
@@ -15,15 +16,18 @@ class MongoEngineJWTAuthentication(JWTAuthentication):
             return None
 
         try:
-            # Assuming user_id is a string representation of ObjectId
-            # Query MongoEngine User model directly
             user = User.objects(id=user_id).first()
-            if user:
-                return user
+            if not user:
+                return None
+
+            token_version = validated_token.get("token_version", 0)
+            if token_version != getattr(user, "token_version", 0):
+                return None
+
+            return user
         except DoesNotExist:
             return None
         except Exception as e:
-            # Log the exception for debugging
             print(f"Error retrieving user with ID {user_id}: {e}")
             return None
         return None

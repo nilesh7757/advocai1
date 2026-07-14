@@ -58,6 +58,13 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
+      // Check if two-factor authentication is required
+      if (response.data.requires_2fa) {
+        toast.success(response.data.message);
+        navigate('/verify-otp', { state: { email: response.data.email, purpose: 'login_2fa' } });
+        return false;
+      }
+
       if (!tokens || !tokens.access || !tokens.refresh) {
         toast.error('Invalid response from server. Please try again.');
         return false;

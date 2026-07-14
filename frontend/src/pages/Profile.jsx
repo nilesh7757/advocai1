@@ -1,41 +1,227 @@
 import React, { useState, useEffect } from "react";
-import { User, Mail, Camera, Edit2, Check, X, Sparkles, Lock } from "lucide-react";
+import { User, Mail, Phone, Camera, Check, X, Lock, Briefcase, BarChart3, Bell, Shield, Trash2 } from "lucide-react";
+import { Switch } from '../Components/ui/switch';
 import { useAuth } from '../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from '../api/axios';
-import PasswordModal from '../Components/PasswordModal'; // Import the new modal
+import PasswordModal from '../Components/PasswordModal';
+
+const VALID_TABS = ['profile', 'professional', 'activity', 'notifications', 'security', 'danger'];
 
 const Profile = () => {
   const { user, loading, setUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab');
+    return VALID_TABS.includes(tab) ? tab : 'profile';
+  });
+
   const [profileData, setProfileData] = useState({
     name: '',
     username: '',
     email: '',
+    phone: '',
     profile_picture: '',
     cover_photo: '',
     new_profile_picture: null,
     new_cover_photo: null,
   });
-  const [isEditing, setIsEditing] = useState(false);
+  const [savedProfileData, setSavedProfileData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [previewCoverImage, setPreviewCoverImage] = useState(null);
 
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // State for modal visibility
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  // Lawyer profile state
+  const [lawyerProfile, setLawyerProfile] = useState(null);
+  const [lawyerProfileSaved, setLawyerProfileSaved] = useState(null);
+  const [lawyerProfileSaving, setLawyerProfileSaving] = useState(false);
+
+  // Activity stats
+  const [stats, setStats] = useState(null);
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({
+    mentions: true,
+    lawyer_updates: true,
+    document_shares: true,
+  });
+  const [notifPrefsSaved, setNotifPrefsSaved] = useState(null);
+  const [notifPrefsSaving, setNotifPrefsSaving] = useState(false);
+
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [twoFactorSaving, setTwoFactorSaving] = useState(false);
+
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
 
   useEffect(() => {
     if (user) {
-      setProfileData({
+      const data = {
         name: user.name || '',
         username: user.username || '',
         email: user.email || '',
+        phone: user.phone || '',
         profile_picture: user.profile_picture || '',
         cover_photo: user.cover_photo || '',
         new_profile_picture: null,
         new_cover_photo: null,
-      });
+      };
+      setProfileData(data);
+      setSavedProfileData({ ...data });
+      const prefs = user.notification_preferences || {
+        mentions: true,
+        lawyer_updates: true,
+        document_shares: true,
+      };
+      setNotifPrefs(prefs);
+      setNotifPrefsSaved({ ...prefs });
     }
   }, [user]);
+
+  // Fetch lawyer profile if user is a lawyer
+  useEffect(() => {
+    if (user && user.role === 'lawyer') {
+      axios.get('/api/lawyer/my-profile/')
+        .then(res => {
+          setLawyerProfile({
+            bio: res.data.bio || '',
+            specializations: Array.isArray(res.data.specializations) ? res.data.specializations : [],
+            experience_years: res.data.experience_years || 0,
+            consultation_fee: res.data.consultation_fee || '',
+            education: res.data.education || '',
+            law_firm: res.data.law_firm || '',
+          });
+          setLawyerProfileSaved({
+            bio: res.data.bio || '',
+            specializations: Array.isArray(res.data.specializations) ? res.data.specializations : [],
+            experience_years: res.data.experience_years || 0,
+            consultation_fee: res.data.consultation_fee || '',
+            education: res.data.education || '',
+            law_firm: res.data.law_firm || '',
+          });
+        })
+        .catch(err => {
+          console.error('Failed to fetch lawyer profile:', err);
+        });
+    }
+  }, [user]);
+
+  // Fetch activity stats
+  useEffect(() => {
+    if (user) {
+      axios.get('/api/auth/profile/stats/')
+        .then(res => setStats(res.data))
+        .catch(err => console.error('Failed to fetch stats:', err));
+    }
+  }, [user]);
+
+  const handleLawyerInputChange = (e) => {
+    setLawyerProfile({ ...lawyerProfile, [e.target.name]: e.target.value });
+  };
+
+  const handleSaveLawyerProfile = async () => {
+    setLawyerProfileSaving(true);
+    try {
+      const payload = {
+        ...lawyerProfile,
+        experience_years: parseInt(lawyerProfile.experience_years, 10) || 0,
+        specializations: typeof lawyerProfile.specializations === 'string'
+          ? lawyerProfile.specializations.split(',').map(s => s.trim()).filter(Boolean)
+          : lawyerProfile.specializations,
+      };
+      const res = await axios.patch('/api/lawyer/my-profile/', payload);
+      toast.success('Professional details updated!');
+      const updated = {
+        bio: res.data.bio || '',
+        specializations: Array.isArray(res.data.specializations) ? res.data.specializations : [],
+        experience_years: res.data.experience_years || 0,
+        consultation_fee: res.data.consultation_fee || '',
+        education: res.data.education || '',
+        law_firm: res.data.law_firm || '',
+      };
+      setLawyerProfile({ ...updated });
+      setLawyerProfileSaved({ ...updated });
+    } catch (err) {
+      console.error('Failed to update lawyer profile:', err);
+      toast.error(err.response?.data?.error || 'Failed to update professional details.');
+    } finally {
+      setLawyerProfileSaving(false);
+    }
+  };
+
+  const handleCancelLawyerProfile = () => {
+    if (lawyerProfileSaved) {
+      setLawyerProfile({ ...lawyerProfileSaved });
+    }
+  };
+
+  const hasLawyerChanges = lawyerProfileSaved && lawyerProfile && (
+    lawyerProfile.bio !== lawyerProfileSaved.bio ||
+    lawyerProfile.experience_years !== lawyerProfileSaved.experience_years ||
+    lawyerProfile.consultation_fee !== lawyerProfileSaved.consultation_fee ||
+    lawyerProfile.education !== lawyerProfileSaved.education ||
+    lawyerProfile.law_firm !== lawyerProfileSaved.law_firm ||
+    JSON.stringify(lawyerProfile.specializations) !== JSON.stringify(lawyerProfileSaved.specializations)
+  );
+
+  const hasNotifPrefsChanges = notifPrefsSaved && (
+    notifPrefs.mentions !== notifPrefsSaved.mentions ||
+    notifPrefs.lawyer_updates !== notifPrefsSaved.lawyer_updates ||
+    notifPrefs.document_shares !== notifPrefsSaved.document_shares
+  );
+
+  const handleSaveNotifPrefs = async () => {
+    setNotifPrefsSaving(true);
+    try {
+      const res = await axios.patch('api/auth/profile/', {
+        notification_preferences: notifPrefs,
+      });
+      toast.success('Notification preferences saved!');
+      setUser(res.data);
+      setNotifPrefsSaved({ ...notifPrefs });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save preferences.');
+    } finally {
+      setNotifPrefsSaving(false);
+    }
+  };
+
+  const handleCancelNotifPrefs = () => {
+    if (notifPrefsSaved) {
+      setNotifPrefs({ ...notifPrefsSaved });
+    }
+  };
+
+  const handleLogoutAllDevices = async () => {
+    setLoggingOutAll(true);
+    try {
+      await axios.post('api/auth/logout-all-devices/');
+      toast.success("You've been logged out of all other devices.");
+      setUser({ ...user, last_login: new Date().toISOString() });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to log out devices.');
+    } finally {
+      setLoggingOutAll(false);
+    }
+  };
+
+  const handleToggle2FA = async (checked) => {
+    setTwoFactorSaving(true);
+    try {
+      const res = await axios.patch('api/auth/two-factor/', { enabled: checked });
+      setUser({ ...user, two_factor_enabled: res.data.two_factor_enabled });
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update two-factor authentication.');
+    } finally {
+      setTwoFactorSaving(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
@@ -70,6 +256,7 @@ const Profile = () => {
     try {
       const formData = new FormData();
       formData.append('name', profileData.name);
+      formData.append('phone', profileData.phone);
       if (profileData.new_profile_picture) {
         formData.append('profile_picture', profileData.new_profile_picture);
       }
@@ -83,7 +270,18 @@ const Profile = () => {
       
       toast.success('Profile updated successfully!');
       setUser(response.data);
-      setIsEditing(false);
+      const updated = {
+        name: response.data.name || '',
+        username: response.data.username || '',
+        email: response.data.email || '',
+        phone: response.data.phone || '',
+        profile_picture: response.data.profile_picture || '',
+        cover_photo: response.data.cover_photo || '',
+        new_profile_picture: null,
+        new_cover_photo: null,
+      };
+      setSavedProfileData({ ...updated });
+      setProfileData({ ...updated });
       setPreviewImage(null);
       setPreviewCoverImage(null);
     } catch (error) {
@@ -95,29 +293,18 @@ const Profile = () => {
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
     setPreviewImage(null);
     setPreviewCoverImage(null);
-    if (user) {
-      setProfileData({
-        name: user.name || '',
-        username: user.username || '',
-        email: user.email || '',
-        profile_picture: user.profile_picture || '',
-        cover_photo: user.cover_photo || '',
-        new_profile_picture: null,
-        new_cover_photo: null,
-      });
+    if (savedProfileData) {
+      setProfileData({ ...savedProfileData });
     }
   };
 
-  // This function will now be passed to the modal
   const handlePasswordSubmit = async (payload, endpoint) => {
     try {
       const response = await axios.post(endpoint, payload);
       toast.success(response.data.message);
-      setUser({ ...user, has_password: true }); // Update has_password status
-      // No need to reset passwordForm state here, modal handles its own state
+      setUser({ ...user, has_password: true });
     } catch (error) {
       console.error('Failed to change/add password:', error);
       console.log('Full error response:', error.response);
@@ -143,7 +330,7 @@ const Profile = () => {
         }
       }
       toast.error(errorMessage);
-      throw error; // Re-throw to prevent modal from closing on error
+      throw error;
     }
   };
 
@@ -151,6 +338,13 @@ const Profile = () => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
+
+  const hasChanges = savedProfileData && (
+    profileData.name !== savedProfileData.name ||
+    profileData.phone !== savedProfileData.phone ||
+    profileData.new_profile_picture !== null ||
+    profileData.new_cover_photo !== null
+  );
 
   if (loading) {
     return (
@@ -178,31 +372,22 @@ const Profile = () => {
 
   const displayImage = previewImage || profileData.profile_picture;
 
+  const navItems = [
+    { key: 'profile', icon: User, label: 'Profile Info' },
+    ...(user?.role === 'lawyer' ? [{ key: 'professional', icon: Briefcase, label: 'Professional Details' }] : []),
+    { key: 'activity', icon: BarChart3, label: 'Activity' },
+    { key: 'notifications', icon: Bell, label: 'Notifications' },
+    { key: 'security', icon: Shield, label: 'Security' },
+    { key: 'danger', icon: Trash2, label: 'Danger Zone', destructive: true },
+  ];
+
   return (
-    <div className="min-h-screen bg-background py-12 px-4 relative overflow-hidden">
-      {/* Animated background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
-
-      <div className="max-w-4xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full border border-primary/20 mb-4">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              Your Profile
-            </span>
-          </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Account Settings</h1>
-          <p className="text-muted-foreground">Manage your personal information</p>
-        </div>
-
-        {/* Profile Card */}
-        <div className="bg-card/40 backdrop-blur-xl rounded-3xl border border-border/50 overflow-hidden shadow-2xl">
-          {/* Cover Image */}
-          <div className="h-48 relative group">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto">
+        {/* Twitter-style Profile Header */}
+        <div className="bg-card border border-border border-b-0 rounded-t-xl overflow-hidden">
+          {/* Cover Photo */}
+          <div className="h-48 sm:h-56 relative group">
             {profileData.cover_photo || previewCoverImage ? (
               <img 
                 src={previewCoverImage || profileData.cover_photo} 
@@ -210,36 +395,34 @@ const Profile = () => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-r from-primary via-secondary to-accent flex items-center justify-center">
-                <span className="text-foreground text-xl font-semibold">No Cover Photo</span>
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <Camera className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
             
-            <div className="absolute inset-0 bg-black/20"></div>
-            {isEditing && (
-              <label 
-                htmlFor="cover-photo-upload" 
-                className="absolute bottom-4 right-4 p-2.5 bg-input/70 rounded-xl cursor-pointer hover:bg-input transition-all duration-200 flex items-center gap-2 text-foreground text-sm font-medium z-10"
-              >
-                <Camera className="w-4 h-4" />
-                Change Cover
-                <input 
-                  id="cover-photo-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleCoverFileChange} 
-                />
-              </label>
-            )}
+            <div className="absolute inset-0 bg-black/10"></div>
+            <label 
+              htmlFor="cover-photo-upload" 
+              className="absolute bottom-4 right-4 p-2.5 bg-muted/90 rounded-lg cursor-pointer hover:bg-muted transition-all duration-200 flex items-center gap-2 text-foreground text-sm font-medium z-10 opacity-0 group-hover:opacity-100"
+            >
+              <Camera className="w-4 h-4" />
+              Change Cover
+              <input 
+                id="cover-photo-upload" 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleCoverFileChange} 
+              />
+            </label>
           </div>
 
-          {/* Profile Content */}
-          <div className="px-8 pb-8">
-            {/* Avatar Section */}
-            <div className="relative -mt-16 mb-6">
-              <div className="relative inline-block">
-                <div className="w-32 h-32 rounded-2xl bg-background border-4 border-border overflow-hidden shadow-xl">
+          {/* Avatar + Info Row */}
+          <div className="px-4 sm:px-8 pb-6 relative">
+            {/* Avatar - pulled up to overlap cover */}
+            <div className="relative -mt-16 mb-3 flex items-end justify-between">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full bg-background border-4 border-card overflow-hidden">
                   {displayImage ? (
                     <img 
                       src={displayImage} 
@@ -247,154 +430,565 @@ const Profile = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                      <span className="text-foreground text-3xl font-bold">
+                    <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary text-3xl font-bold">
                         {getInitials(profileData.name || profileData.username)}
                       </span>
                     </div>
                   )}
                 </div>
                 
-                {isEditing && (
-                  <label 
-                    htmlFor="profile-picture-upload" 
-                    className="absolute bottom-2 right-2 p-2.5 bg-gradient-to-br from-primary to-secondary rounded-xl cursor-pointer hover:shadow-lg hover:shadow-primary/30 transition-all duration-200 group"
-                  >
-                    <Camera className="w-4 h-4" />
-                    Change Profile
-                    <input 
-                      id="profile-picture-upload" 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={handleProfileFileChange} 
-                    />
-                  </label>
-                )}
+                <label 
+                  htmlFor="profile-picture-upload" 
+                  className="absolute bottom-1 right-1 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-all duration-200 shadow-md opacity-0 group-hover:opacity-100"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <input 
+                    id="profile-picture-upload" 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleProfileFileChange} 
+                  />
+                </label>
               </div>
 
-              {/* Edit Button (Top Right) */}
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="absolute right-0 top-0 px-4 py-2 bg-input/50 hover:bg-input border border-border/50 rounded-xl text-foreground text-sm font-medium transition-all duration-200 flex items-center gap-2 group"
-                >
-                  <Edit2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                  Edit Profile
-                </button>
+              {hasChanges && (
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-full text-foreground text-sm font-bold transition-all duration-200 flex items-center gap-1.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full text-sm font-bold transition-all duration-200 flex items-center gap-1.5"
+                  >
+                    {saving ? (
+                      <div className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    Save
+                  </button>
+                </div>
               )}
             </div>
 
-            {/* Profile Info */}
-            <div className="space-y-6">
-              {/* Name Field */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" />
-                  Full Name
-                </label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="name"
-                    value={profileData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-input border border-border/50 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                    placeholder="Enter your full name"
-                  />
-                ) : (
-                  <div className="px-4 py-3 bg-input/30 border border-border/50 rounded-xl">
-                    <p className="text-foreground text-lg font-medium">
-                      {profileData.name || 'Not provided'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Username Field */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4 text-secondary" />
-                  Username
-                </label>
-                <div className="px-4 py-3 bg-input/30 border border-border/50 rounded-xl">
-                  <p className="text-muted-foreground flex items-center gap-2">
-                    <span className="text-muted-foreground">@</span>
-                    {profileData.username || 'Not provided'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Username cannot be changed</p>
-                </div>
-              </div>
-
-              {/* Email Field */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-accent" />
-                  Email Address
-                </label>
-                <div className="px-4 py-3 bg-input/30 border border-border/50 rounded-xl">
-                  <p className="text-muted-foreground">{profileData.email || 'Not provided'}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Email is verified and cannot be changed</p>
-                </div>
-              </div>
+            {/* Name + Username */}
+            <div>
+              <h1 className="text-xl font-bold text-foreground leading-tight">
+                {profileData.name || 'Not provided'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                @{profileData.username || 'notprovided'}
+              </p>
             </div>
+          </div>
+        </div>
 
-            {/* Action Buttons */}
-            {isEditing && (
-              <div className="flex gap-3 mt-8 pt-6 border-t border-border/50">
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex-1 px-6 py-3 bg-input/50 hover:bg-input border border-border/50 rounded-xl text-foreground font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <X className="w-4 h-4" />
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-xl text-foreground font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Save Changes
-                    </>
+        {/* Tabbed Settings Layout */}
+        <div className="flex flex-col md:flex-row gap-4 mt-4 px-0 sm:px-0">
+          {/* Left: Tab Navigation */}
+          <nav className="w-full md:w-64 flex-shrink-0">
+            <div className="bg-card border border-border rounded-xl p-2 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => switchTab(item.key)}
+                    className={
+                      "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left flex-shrink-0 " +
+                      (item.destructive
+                        ? (isActive
+                            ? "bg-destructive/10 text-destructive"
+                            : "text-destructive hover:bg-destructive/10")
+                        : (isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"))
+                    }
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Right: Content Panel */}
+          <div className="flex-1 min-w-0">
+            <div className="bg-card border border-border rounded-xl p-6 md:p-8">
+              {activeTab === 'profile' && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="name"
+                        value={profileData.name}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 pr-20 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="Enter your full name"
+                      />
+                      {savedProfileData && profileData.name !== savedProfileData.name && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <button
+                            onClick={handleSaveProfile}
+                            disabled={saving}
+                            className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            disabled={saving}
+                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <User className="w-4 h-4 text-secondary" />
+                      Username
+                    </label>
+                    <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                      <p className="text-muted-foreground flex items-center gap-2">
+                        <span className="text-muted-foreground">@</span>
+                        {profileData.username || 'Not provided'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Username cannot be changed</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-accent" />
+                      Email Address
+                    </label>
+                    <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                      <p className="text-muted-foreground">{profileData.email || 'Not provided'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Email is verified and cannot be changed</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-accent" />
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={profileData.phone}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 pr-20 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="Enter your phone number"
+                      />
+                      {savedProfileData && profileData.phone !== savedProfileData.phone && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <button
+                            onClick={handleSaveProfile}
+                            disabled={saving}
+                            className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            disabled={saving}
+                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Account Information */}
+                  <div className="pt-6 border-t border-border space-y-4">
+                    <h3 className="text-sm font-medium text-foreground">Account Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                        <p className="text-xs text-muted-foreground mb-1">Member since</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {user.date_joined ? new Date(user.date_joined).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+                        </p>
+                      </div>
+
+                      <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                        <p className="text-xs text-muted-foreground mb-1">Account type</p>
+                        <span className="inline-block bg-primary/10 text-primary text-xs font-medium rounded-full px-2.5 py-1">
+                          {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
+                        </span>
+                      </div>
+
+                      <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                        <p className="text-xs text-muted-foreground mb-1">Verification</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {user.is_verified ? (
+                            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium rounded-full px-2.5 py-1">
+                              <Check className="w-3 h-3" />
+                              Email Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-muted text-muted-foreground text-xs font-medium rounded-full px-2.5 py-1 border border-border">
+                              Not Verified
+                            </span>
+                          )}
+                          {user.role === 'lawyer' && (
+                            user.is_lawyer_verified || user.lawyer_verification_status === 'approved' ? (
+                              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium rounded-full px-2.5 py-1">
+                                <Check className="w-3 h-3" />
+                                Bar Verified
+                              </span>
+                            ) : user.lawyer_verification_status === 'rejected' ? (
+                              <span className="inline-flex items-center gap-1 bg-destructive/10 text-destructive text-xs font-medium rounded-full px-2.5 py-1">
+                                Verification Rejected
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-muted text-muted-foreground text-xs font-medium rounded-full px-2.5 py-1 border border-border">
+                                Verification Pending
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                        <p className="text-xs text-muted-foreground mb-1">Sign-in method</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {user.auth_provider === 'google' ? 'Google' : 'Email'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {stats && (
+                    <div className="pt-6 border-t border-border space-y-4">
+                      <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-primary" />
+                        Activity Overview
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-muted rounded-xl p-4 text-center">
+                          <p className="text-2xl font-bold text-foreground">{stats.documents_analyzed_count}</p>
+                          <p className="text-xs text-muted-foreground">Documents Analyzed</p>
+                        </div>
+                        <div className="bg-muted rounded-xl p-4 text-center">
+                          <p className="text-2xl font-bold text-foreground">{stats.documents_created_count}</p>
+                          <p className="text-xs text-muted-foreground">Documents Created</p>
+                        </div>
+                        <div className="bg-muted rounded-xl p-4 text-center">
+                          <p className="text-2xl font-bold text-foreground">{stats.lawyer_consultations_count}</p>
+                          <p className="text-xs text-muted-foreground">Lawyer Consultations</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </button>
-              </div>
-            )}
 
-            {/* Password Management Section */}
-            <div className="mt-8 pt-6 border-t border-border/50">
-              <h2 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <Lock className="w-6 h-6 text-primary" />
-                Password Management
-              </h2>
+                  {/* Professional Details - Lawyers Only */}
+                  {user.role === 'lawyer' && lawyerProfile && (
+                    <div className="pt-6 border-t border-border space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-primary" />
+                          Professional Details
+                        </h3>
+                        {hasLawyerChanges && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleCancelLawyerProfile}
+                              disabled={lawyerProfileSaving}
+                              className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleSaveLawyerProfile}
+                              disabled={lawyerProfileSaving}
+                              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                              title="Save"
+                            >
+                              {lawyerProfileSaving ? (
+                                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
-              <div className="flex gap-3">
-                {user.auth_provider === 'google' && !user.has_password && (
-                  <button
-                    onClick={() => setIsPasswordModalOpen(true)}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-xl text-foreground font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40"
-                  >
-                    Add Password
-                  </button>
-                )}
-                {(user.auth_provider === 'email' || (user.auth_provider === 'google' && user.has_password)) && (
-                  <button
-                    onClick={() => setIsPasswordModalOpen(true)}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 rounded-xl text-foreground font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40"
-                  >
-                    Change Password
-                  </button>
-                )}
-              </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Bio</label>
+                          <textarea
+                            name="bio"
+                            value={lawyerProfile.bio}
+                            onChange={handleLawyerInputChange}
+                            rows={3}
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                            placeholder="Tell clients about yourself..."
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Law Firm</label>
+                            <input
+                              type="text"
+                              name="law_firm"
+                              value={lawyerProfile.law_firm}
+                              onChange={handleLawyerInputChange}
+                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                              placeholder="e.g. Smith & Associates"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Education</label>
+                            <input
+                              type="text"
+                              name="education"
+                              value={lawyerProfile.education}
+                              onChange={handleLawyerInputChange}
+                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                              placeholder="e.g. LLB, National Law School"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Years of Experience</label>
+                            <input
+                              type="number"
+                              name="experience_years"
+                              value={lawyerProfile.experience_years}
+                              onChange={handleLawyerInputChange}
+                              min="0"
+                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Consultation Fee</label>
+                            <input
+                              type="text"
+                              name="consultation_fee"
+                              value={lawyerProfile.consultation_fee}
+                              onChange={handleLawyerInputChange}
+                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                              placeholder="e.g. ₹2000/hr"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Specializations</label>
+                          <input
+                            type="text"
+                            name="specializations"
+                            value={Array.isArray(lawyerProfile.specializations) ? lawyerProfile.specializations.join(', ') : lawyerProfile.specializations}
+                            onChange={(e) => setLawyerProfile({ ...lawyerProfile, specializations: e.target.value })}
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            placeholder="e.g. Family Law, Criminal Law, Corporate Law"
+                          />
+                          <p className="text-xs text-muted-foreground">Separate multiple specializations with commas</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'professional' && (
+                <div className="py-12 text-center">
+                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                </div>
+              )}
+
+              {activeTab === 'activity' && (
+                <div className="py-12 text-center">
+                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                </div>
+              )}
+
+              {activeTab === 'notifications' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-primary" />
+                      Notification Preferences
+                    </h2>
+                    {hasNotifPrefsChanges && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleCancelNotifPrefs}
+                          disabled={notifPrefsSaving}
+                          className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleSaveNotifPrefs}
+                          disabled={notifPrefsSaving}
+                          className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          title="Save"
+                        >
+                          {notifPrefsSaving ? (
+                            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between py-4 border-b border-border">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Comment mentions</p>
+                        <p className="text-xs text-muted-foreground">Get notified when someone mentions you in a comment</p>
+                      </div>
+                      <Switch
+                        checked={notifPrefs.mentions}
+                        onCheckedChange={(checked) => setNotifPrefs({ ...notifPrefs, mentions: checked })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-4 border-b border-border">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Lawyer connection updates</p>
+                        <p className="text-xs text-muted-foreground">Updates on your lawyer connection requests</p>
+                      </div>
+                      <Switch
+                        checked={notifPrefs.lawyer_updates}
+                        onCheckedChange={(checked) => setNotifPrefs({ ...notifPrefs, lawyer_updates: checked })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-4">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Document sharing</p>
+                        <p className="text-xs text-muted-foreground">Notifications when documents are shared with you</p>
+                      </div>
+                      <Switch
+                        checked={notifPrefs.document_shares}
+                        onCheckedChange={(checked) => setNotifPrefs({ ...notifPrefs, document_shares: checked })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'security' && (
+                <div className="space-y-6">
+                  <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-primary" />
+                    Password Management
+                  </h2>
+                  <div className="flex gap-3">
+                    {user.auth_provider === 'google' && !user.has_password && (
+                      <button
+                        onClick={() => setIsPasswordModalOpen(true)}
+                        className="px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        Add Password
+                      </button>
+                    )}
+                    {(user.auth_provider === 'email' || (user.auth_provider === 'google' && user.has_password)) && (
+                      <button
+                        onClick={() => setIsPasswordModalOpen(true)}
+                        className="px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                      >
+                        Change Password
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-6 border-t border-border space-y-4">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      Session Security
+                    </h3>
+
+                    {user.last_login && (
+                      <div className="px-4 py-3 bg-muted border border-border rounded-xl">
+                        <p className="text-xs text-muted-foreground mb-1">Current session started</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {new Date(user.last_login).toLocaleString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                            hour: 'numeric', minute: '2-digit', hour12: true,
+                          })}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between py-4 border-b border-border">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Log out all other devices</p>
+                        <p className="text-xs text-muted-foreground">
+                          Invalidates every other active session. You'll need to sign in again on those devices.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleLogoutAllDevices}
+                        disabled={loggingOutAll}
+                        className="px-4 py-2 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-2 flex-shrink-0"
+                      >
+                        {loggingOutAll ? (
+                          <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin"></div>
+                        ) : (
+                          <Shield className="w-4 h-4" />
+                        )}
+                        Log Out All
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between py-4">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Two-factor authentication</p>
+                        <p className="text-xs text-muted-foreground">
+                          Require a verification code from your email each time you sign in.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={user.two_factor_enabled || false}
+                        onCheckedChange={handleToggle2FA}
+                        disabled={twoFactorSaving}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'danger' && (
+                <div className="py-12 text-center">
+                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

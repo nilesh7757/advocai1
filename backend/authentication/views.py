@@ -41,6 +41,7 @@ def get_tokens_for_user(user):
     refresh = RefreshToken()
     refresh["user_id"] = str(user.id)
     refresh["email"] = user.email
+    refresh["token_version"] = getattr(user, "token_version", 0)
 
     return {
         "refresh": str(refresh),
@@ -248,8 +249,41 @@ def login_view(request):
                 status=status.HTTP_200_OK,
             )
 
+        # Check if two-factor authentication is enabled
+        if getattr(user, "two_factor_enabled", False):
+            try:
+                otp_sent = create_and_send_otp(user)
+
+                if not otp_sent:
+                    return Response(
+                        {
+                            "error": "Failed to send two-factor OTP. Please try again."
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+            except Exception as e:
+                return Response(
+                    {
+                        "error": "Email service temporarily unavailable. Please try again later.",
+                        "details": str(e) if settings.DEBUG else None,
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            return Response(
+                {
+                    "message": "OTP sent for two-factor verification.",
+                    "email": user.email,
+                    "requires_2fa": True,
+                    "redirect": "verify-otp",
+                },
+                status=status.HTTP_200_OK,
+            )
+
         # User is verified, generate tokens
         try:
+            user.last_login = datetime.now()
+            user.save()
             tokens = get_tokens_for_user(user)
             user_data = UserSerializer(user).data
         except Exception as e:
@@ -382,6 +416,8 @@ def google_auth_view(request):
             user.is_verified = True  # Google users are auto-verified
             user.save()
 
+        user.last_login = datetime.now()
+        user.save()
         tokens = get_tokens_for_user(user)
         user_data = UserSerializer(user).data
 
@@ -529,13 +565,31 @@ def verify_otp_view(request):
 
         # Verify OTP
         try:
+            purpose = serializer.validated_data.get("purpose", "signup")
             if is_otp_valid(user, otp):
-                user.is_verified = True
+                if purpose == "signup":
+                    user.is_verified = True
                 user.save()
                 clear_otp(user)
 
+                # Update last_login for 2FA login completion
+                if purpose == "login_2fa":
+                    user.last_login = datetime.now()
+                    user.save()
+
                 tokens = get_tokens_for_user(user)
                 user_data = UserSerializer(user).data
+
+                if purpose == "login_2fa":
+                    return Response(
+                        {
+                            "message": "Two-factor verification successful.",
+                            "user": user_data,
+                            "tokens": tokens,
+                            "redirect": "home",
+                        },
+                        status=status.HTTP_200_OK,
+                    )
 
                 return Response(
                     {
@@ -594,6 +648,7 @@ def resend_otp_view(request):
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
         email = serializer.validated_data["email"]
+        purpose = request.data.get("purpose", "signup")
 
         # Find user
         try:
@@ -617,8 +672,8 @@ def resend_otp_view(request):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Check if already verified
-        if user.is_verified:
+        # Check if already verified (skip for 2FA login purpose)
+        if purpose != "login_2fa" and user.is_verified:
             return Response(
                 {"error": "Your account is already verified. Please login."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -668,6 +723,57 @@ def logout_view(request):
         return Response(status=status.HTTP_205_RESET_CONTENT)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def logout_all_devices_view(request):
+    """Increment token_version to instantly invalidate all issued tokens."""
+    try:
+        user = request.user
+        user.token_version = getattr(user, "token_version", 0) + 1
+        user.last_login = datetime.now()
+        user.save()
+        return Response(
+            {"message": "Logged out of all other devices."},
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def two_factor_toggle_view(request):
+    """Enable or disable two-factor authentication for the authenticated user."""
+    user = request.user
+
+    # Users without a usable password (OAuth-only) cannot enable 2FA
+    if not user.has_usable_password():
+        return Response(
+            {"error": "Two-factor authentication requires a password. Please add a password to your account first."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    enabled = request.data.get("enabled")
+    if enabled is None:
+        return Response(
+            {"error": "The 'enabled' field is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.two_factor_enabled = bool(enabled)
+    user.save()
+
+    return Response(
+        {
+            "message": "Two-factor authentication has been enabled." if user.two_factor_enabled else "Two-factor authentication has been disabled.",
+            "two_factor_enabled": user.two_factor_enabled,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])
@@ -1031,6 +1137,38 @@ def mark_notification_read_view(request, notification_id):
         return Response({'error': 'Notification not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         print(f"Error updating notification: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def profile_stats_view(request):
+    """Return activity counts for the authenticated user."""
+    try:
+        from document_summarizer.models import DocumentSession
+        from lawyer.models import LawyerConnectionRequest
+        from documents.mongo_client import conversations_collection
+
+        user = request.user
+
+        documents_analyzed_count = DocumentSession.objects(user=user).count()
+
+        documents_created_count = conversations_collection.count_documents(
+            {'owner': user.username}
+        )
+
+        lawyer_consultations_count = LawyerConnectionRequest.objects(
+            (LawyerConnectionRequest.client == user) | (LawyerConnectionRequest.lawyer == user),
+            status='accepted'
+        ).count()
+
+        return Response({
+            'documents_analyzed_count': documents_analyzed_count,
+            'documents_created_count': documents_created_count,
+            'lawyer_consultations_count': lawyer_consultations_count,
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error fetching profile stats: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

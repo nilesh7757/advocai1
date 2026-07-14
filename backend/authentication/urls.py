@@ -5,6 +5,8 @@ from .views import (
     login_view, 
     google_auth_view, 
     logout_view,
+    logout_all_devices_view,
+    two_factor_toggle_view,
     verify_otp_view,
     resend_otp_view,
     profile_detail_update_view, 
@@ -19,7 +21,8 @@ from .views import (
     reset_password_view,
     notifications_view,
     mark_notification_read_view,
-    search_users_view
+    search_users_view,
+    profile_stats_view
 )
 
 urlpatterns = [
@@ -29,7 +32,10 @@ urlpatterns = [
     path('verify-otp/', verify_otp_view, name='verify_otp'),
     path('resend-otp/', resend_otp_view, name='resend_otp'),
     path('profile/', profile_detail_update_view, name='profile'), # Use the combined view
+    path('profile/stats/', profile_stats_view, name='profile_stats'),
     path('logout/', logout_view, name='logout'),
+    path('logout-all-devices/', logout_all_devices_view, name='logout_all_devices'),
+    path('two-factor/', two_factor_toggle_view, name='two_factor_toggle'),
     path('forgot-password/', forgot_password_view, name='forgot_password'),
     path('reset-password/', reset_password_view, name='reset_password'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

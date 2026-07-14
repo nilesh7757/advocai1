@@ -12,6 +12,7 @@ const VerifyOtp = () => {
   const navigate = useNavigate();
   const { setUser, setIsAuthenticated } = useAuth();
   const email = location.state?.email;
+  const purpose = location.state?.purpose || 'signup';
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +26,7 @@ const VerifyOtp = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post('api/auth/verify-otp/', { email, otp_code: otp });
+      const response = await axios.post('api/auth/verify-otp/', { email, otp_code: otp, purpose });
       toast.success(response.data.message);
       
       // Store tokens and user data if provided
@@ -66,10 +67,10 @@ const VerifyOtp = () => {
       <Card className="w-full max-w-md bg-card/40 backdrop-blur-sm border border-border/50 relative z-10 animate-fade-in">
         <CardHeader className="text-center">
           <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
-            <span className="text-primary text-xs font-medium">Email Verification</span>
+            <span className="text-primary text-xs font-medium">{purpose === 'login_2fa' ? 'Two-Factor Authentication' : 'Email Verification'}</span>
           </div>
           <CardTitle className="text-3xl font-bold text-foreground mb-2">
-            Verify OTP
+            {purpose === 'login_2fa' ? 'Verify It\'s You' : 'Verify OTP'}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             An OTP has been sent to <span className="font-medium text-primary">{email}</span>
@@ -94,7 +95,7 @@ const VerifyOtp = () => {
               disabled={loading || otp.length !== 6}
               className="w-full bg-primary hover:bg-primary/90 text-foreground transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Verifying...' : 'Verify Account'}
+              {loading ? 'Verifying...' : (purpose === 'login_2fa' ? 'Verify Login' : 'Verify Account')}
             </Button>
           </form>
 

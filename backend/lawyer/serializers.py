@@ -79,3 +79,14 @@ class LawyerReviewSerializer(serializers.Serializer):
             return str(obj.connection_request.id)
         except Exception:
             return None
+
+
+class LawyerProfileEditSerializer(serializers.Serializer):
+    """Serializer for lawyers editing their own profile (self-service)."""
+
+    bio = serializers.CharField(required=False, allow_blank=True)
+    specializations = serializers.ListField(child=serializers.CharField(), required=False)
+    experience_years = serializers.IntegerField(required=False)
+    consultation_fee = serializers.CharField(required=False, allow_blank=True)
+    education = serializers.CharField(required=False, allow_blank=True)
+    law_firm = serializers.CharField(required=False, allow_blank=True)

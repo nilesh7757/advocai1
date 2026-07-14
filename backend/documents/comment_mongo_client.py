@@ -100,6 +100,9 @@ def add_comment(document_id, user, content, position=None, parent_comment_id=Non
     for recipient in mentioned_users:
         if sender_user and recipient.id == sender_user.id:
             continue
+        prefs = getattr(recipient, 'notification_preferences', {}) or {}
+        if not prefs.get('mentions', True):
+            continue
         try:
             AuthNotification(
                 recipient=recipient,

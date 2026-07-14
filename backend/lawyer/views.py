@@ -14,6 +14,7 @@ from datetime import datetime
 
 from .serializers import (
     LawyerProfileSerializer,
+    LawyerProfileEditSerializer,
     LawyerConnectionRequestSerializer,
     LawyerConnectionStatusSerializer,
     LawyerReviewSerializer,
@@ -554,3 +555,47 @@ def lawyer_match_view(request):
     sorted_data = [data for _, data in matched_results[:5]]
     
     return Response(sorted_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def my_lawyer_profile_view(request):
+    """GET/PATCH the authenticated lawyer's own profile."""
+    if not request.user.is_lawyer:
+        return Response(
+            {'error': 'Only lawyer accounts can access this endpoint.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        profile = LawyerProfile.objects.get(user=request.user)
+    except LawyerProfile.DoesNotExist:
+        return Response(
+            {'error': 'Lawyer profile not found.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if request.method == 'GET':
+        serializer = LawyerProfileSerializer(profile)
+        return Response(serializer.data)
+
+    # PATCH
+    serializer = LawyerProfileEditSerializer(data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    if 'bio' in data:
+        profile.bio = data['bio']
+    if 'specializations' in data:
+        profile.specializations = data['specializations']
+    if 'experience_years' in data:
+        profile.experience_years = data['experience_years']
+    if 'consultation_fee' in data:
+        profile.consultation_fee = data['consultation_fee']
+    if 'education' in data:
+        profile.education = data['education']
+    if 'law_firm' in data:
+        profile.law_firm = data['law_firm']
+
+    profile.save()
+    return Response(LawyerProfileSerializer(profile).data)

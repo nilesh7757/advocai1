@@ -13,12 +13,14 @@ from .views import (
     check_review_status_view,
     update_case_status_view,
     lawyer_match_view,
+    my_lawyer_profile_view,
 )
 
 urlpatterns = [
     path('', lawyer_list_view, name='lawyer_list'),
     path('match/', lawyer_match_view, name='lawyer_match'),
     path('dashboard/', lawyer_dashboard_view, name='lawyer_dashboard'),
+    path('my-profile/', my_lawyer_profile_view, name='my_lawyer_profile'),
     path('availability/', update_lawyer_availability_view, name='update_lawyer_availability'),
     path('connections/', connection_requests_list_view, name='connection_requests_list'),
     path('connections/<str:connection_id>/', lawyer_connection_update_view, name='lawyer_connection_update'),
