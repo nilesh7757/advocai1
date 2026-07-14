@@ -60,7 +60,7 @@ def get_conversation_by_id(conversation_id):
         print(f"Error fetching conversation by ID: {e}")
         return None
 
-def save_conversation(title, messages, initial_document_content=None, uploaded_by=None, notes=None, share_permissions=None, shared_with_users=None):
+def save_conversation(title, messages, initial_document_content=None, uploaded_by=None, notes=None, share_permissions=None, shared_with_users=None, is_template=False, template_variables=None):
     """Saves a new conversation to the database, creating the first document version."""
     current_time = datetime.utcnow()
     document_versions = []
@@ -83,6 +83,8 @@ def save_conversation(title, messages, initial_document_content=None, uploaded_b
             'owner': uploaded_by, # Add owner field
             'share_permissions': share_permissions,
             'shared_with_users': shared_with_users if shared_with_users is not None else [], # New field
+            'is_template': is_template,
+            'template_variables': template_variables if template_variables is not None else [],
         }
         result = conversations_collection.insert_one(conversation_doc)
         print(f"[DEBUG] New conversation saved with ID: {result.inserted_id}")
@@ -93,7 +95,7 @@ def save_conversation(title, messages, initial_document_content=None, uploaded_b
         print(f"Error saving conversation: {e}")
         return None
 
-def update_conversation(conversation_id, title, messages, new_document_content=None, uploaded_by=None, notes=None, shared_with_users=None):
+def update_conversation(conversation_id, title, messages, new_document_content=None, uploaded_by=None, notes=None, shared_with_users=None, is_template=None, template_variables=None):
     """Updates an existing conversation, appending a new document version."""
     current_time = datetime.utcnow()
     update_doc = {
@@ -106,6 +108,12 @@ def update_conversation(conversation_id, title, messages, new_document_content=N
 
     if shared_with_users is not None:
         update_doc['$set']['shared_with_users'] = shared_with_users
+
+    if is_template is not None:
+        update_doc['$set']['is_template'] = is_template
+
+    if template_variables is not None:
+        update_doc['$set']['template_variables'] = template_variables
 
     existing_conv = get_conversation_by_id(conversation_id)
     print(f"[DEBUG] update_conversation called for ID: {conversation_id}")

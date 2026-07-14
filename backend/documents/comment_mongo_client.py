@@ -27,7 +27,8 @@ def serialize_comment(comment):
         'position': comment.get('position'),
         'created_at': comment.get('created_at').isoformat() if isinstance(comment.get('created_at'), datetime.datetime) else comment.get('created_at'),
         'parent_comment': str(comment['parent_comment']) if comment.get('parent_comment') else None,
-        'replies': [] # Initialize replies list here, will be populated later
+        'replies': [],
+        'mentions': comment.get('mentions', [])
     }
     return serialized
 
@@ -37,16 +38,12 @@ def get_comments_for_document(document_id):
     """
     comments_collection = get_comments_collection()
     
-    # Fetch all comments for the document and sort them
     all_raw_comments = list(comments_collection.find({'document_id': document_id}).sort('created_at', 1))
     
-    # Serialize all comments first
     all_serialized_comments = [serialize_comment(comment) for comment in all_raw_comments]
     
-    # Build a dictionary for quick lookup by ID
     comments_by_id = {comment['id']: comment for comment in all_serialized_comments}
     
-    # Build the tree structure
     root_comments = []
     for comment in all_serialized_comments:
         if comment.get('parent_comment'):
@@ -54,7 +51,6 @@ def get_comments_for_document(document_id):
             if parent_id in comments_by_id:
                 comments_by_id[parent_id].setdefault('replies', []).append(comment)
             else:
-                # If parent not found (e.g., parent was deleted), treat as a root comment
                 root_comments.append(comment)
         else:
             root_comments.append(comment)
@@ -65,6 +61,21 @@ def add_comment(document_id, user, content, position=None, parent_comment_id=Non
     """
     Adds a new comment to the MongoDB comments collection.
     """
+    import re
+    from authentication.models import User as AuthUser, Notification as AuthNotification
+    
+    # Extract mentions
+    mentions_usernames = re.findall(r'@([a-zA-Z0-9_-]+)', content)
+    mentions_usernames = list(set(mentions_usernames))
+    
+    mentioned_users = []
+    for username in mentions_usernames:
+        try:
+            u = AuthUser.objects.get(username=username)
+            mentioned_users.append(u)
+        except Exception:
+            pass
+            
     comments_collection = get_comments_collection()
     
     comment_data = {
@@ -73,11 +84,32 @@ def add_comment(document_id, user, content, position=None, parent_comment_id=Non
         'content': content,
         'position': position,
         'created_at': datetime.datetime.now(datetime.timezone.utc),
-        'parent_comment': ObjectId(parent_comment_id) if parent_comment_id else None
+        'parent_comment': ObjectId(parent_comment_id) if parent_comment_id else None,
+        'mentions': [u.username for u in mentioned_users]
     }
     
     result = comments_collection.insert_one(comment_data)
     
-    # Retrieve the newly created comment to return a fully formed object
+    # Create notifications
+    sender_user = None
+    try:
+        sender_user = AuthUser.objects.get(username=user)
+    except Exception:
+        pass
+        
+    for recipient in mentioned_users:
+        if sender_user and recipient.id == sender_user.id:
+            continue
+        try:
+            AuthNotification(
+                recipient=recipient,
+                sender=sender_user,
+                notification_type='mention',
+                document_id=str(document_id),
+                message=f"{sender_user.username if sender_user else 'Someone'} mentioned you in a comment."
+            ).save()
+        except Exception as e:
+            print(f"Error creating notification: {e}")
+    
     new_comment = comments_collection.find_one({'_id': result.inserted_id})
     return new_comment

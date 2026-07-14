@@ -984,3 +984,70 @@ def add_password_view(request):
         return Response({"message": "Password added successfully."}, status=status.HTTP_200_OK)
     print("AddPasswordSerializer errors:", serializer.errors) # Debugging line
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def notifications_view(request):
+    """
+    Fetch notifications for the current authenticated user.
+    """
+    from .models import Notification
+    try:
+        user = request.user
+        notifications = Notification.objects(recipient=user).order_by('-created_at')
+        
+        serialized = []
+        for n in notifications:
+            serialized.append({
+                'id': str(n.id),
+                'sender': n.sender.username if n.sender else 'Someone',
+                'notification_type': n.notification_type,
+                'document_id': n.document_id,
+                'message': n.message,
+                'is_read': n.is_read,
+                'created_at': n.created_at.isoformat() if n.created_at else None
+            })
+        return Response(serialized, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error fetching notifications: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def mark_notification_read_view(request, notification_id):
+    """
+    Mark a notification as read.
+    """
+    from .models import Notification
+    try:
+        user = request.user
+        notification = Notification.objects.get(id=notification_id, recipient=user)
+        notification.is_read = True
+        notification.save()
+        return Response({'success': True}, status=status.HTTP_200_OK)
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Error updating notification: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def search_users_view(request):
+    """
+    Search users for autocomplete/mentions.
+    """
+    query = request.GET.get('q', '').strip()
+    try:
+        if query:
+            users = User.objects(username__icontains=query)[:10]
+        else:
+            users = User.objects()[:20]
+            
+        serialized = [{'username': u.username, 'name': u.name} for u in users]
+        return Response(serialized, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

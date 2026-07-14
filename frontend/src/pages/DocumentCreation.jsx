@@ -1,6 +1,5 @@
-
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FileText, PenTool, Send, Download, User, Bot, Save, Edit, Eye, Bold, Italic, Strikethrough, Code, Pilcrow, Heading1, Heading2, Heading3, Indent as IndentIcon, Outdent as OutdentIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline as UnderlineIcon, MessageCircle, History, FileCheck, Minus, Menu, X, XCircle, Maximize, Share2, Sparkles } from 'lucide-react'; // Added Maximize, Share2, Sparkles
+import { FileText, PenTool, Send, Download, User, Bot, Save, Edit, Eye, Bold, Italic, Strikethrough, Code, Pilcrow, Heading1, Heading2, Heading3, Indent as IndentIcon, Outdent as OutdentIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline as UnderlineIcon, MessageCircle, History, FileCheck, Minus, Menu, X, XCircle, Maximize, Share2, Sparkles, BookOpen, Loader2 } from 'lucide-react'; // Added Maximize, Share2, Sparkles, BookOpen
 import axios from '../api/axios';
 import { saveAs } from 'file-saver';
 import '../styles/MarkdownPreview.css';
@@ -43,6 +42,99 @@ const convertMarkdownToHtml = (markdownContent) => {
   return html;
 };
 
+// Clause Library Panel Component
+const ClauseLibraryPanel = ({ editor, setIsEditing }) => {
+  const [clauses, setClauses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const fetchClauses = async () => {
+      try {
+        const response = await axios.get('/api/ai-generator/clause-library/');
+        setClauses(response.data);
+      } catch (err) {
+        console.error('Error fetching clauses:', err);
+        toast.error('Failed to load clause library.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClauses();
+  }, []);
+
+  const handleInsert = (clauseText) => {
+    if (!editor) {
+      toast.error('Editor not ready.');
+      return;
+    }
+    // Switch to edit mode automatically so insertion is visible/possible
+    if (setIsEditing) {
+      setIsEditing(true);
+    }
+    setTimeout(() => {
+      editor.chain().focus().insertContent(clauseText).run();
+      toast.success('Clause inserted!');
+    }, 100);
+  };
+
+  const filteredClauses = clauses.filter(
+    (c) =>
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col h-full bg-card select-none">
+      <div className="p-4 border-b border-border flex-shrink-0 flex flex-col gap-2">
+        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Clause Library</h3>
+        <input
+          type="text"
+          placeholder="Search by category, title..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-background border border-border text-xs rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <span className="text-xs text-muted-foreground animate-pulse">Loading clauses...</span>
+          </div>
+        ) : filteredClauses.length > 0 ? (
+          filteredClauses.map((clause, idx) => (
+            <div key={idx} className="p-3 border border-border rounded-lg bg-muted/20 hover:border-border/80 flex flex-col gap-2 transition-all">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wide">
+                  {clause.category}
+                </span>
+                <button
+                  onClick={() => handleInsert(clause.text)}
+                  className="px-2.5 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded text-[10px] font-bold cursor-pointer transition-all shadow-sm"
+                >
+                  Insert
+                </button>
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-foreground mb-1 select-text">{clause.title}</h4>
+                <p className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed font-serif select-text italic">
+                  {clause.text}
+                </p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-12">
+            <span className="text-xs text-muted-foreground">No clauses found.</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 const DocumentCreation = () => {
   const { id: mongoConversationId } = useParams();
@@ -76,10 +168,92 @@ const DocumentCreation = () => {
   const documentRef = useRef(null); // Ref for the document area
   const [isZenMode, setIsZenMode] = useState(false); // Zen mode state
 
+  // Inline AI refinement actions state and helper
+  const [refiningAction, setRefiningAction] = useState(null);
+
+  const handleInlineAction = async (action) => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      toast.error('Please select some text first.');
+      return;
+    }
+    const selectedText = editor.state.doc.textBetween(from, to, ' ');
+    if (!selectedText || !selectedText.trim()) {
+      toast.error('Please select some text first.');
+      return;
+    }
+
+    setRefiningAction(action);
+    try {
+      const response = await axios.post('/api/ai-generator/refine-text/', {
+        text: selectedText,
+        action: action
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const newText = response.data;
+      editor.chain().focus().deleteSelection().insertContent(newText).run();
+      toast.success('Text refined successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || err.message || 'Failed to refine text.');
+    } finally {
+      setRefiningAction(null);
+    }
+  };
+
+  // Template States & Handlers
+  const [templateContent, setTemplateContent] = useState('');
+  const [templateVariables, setTemplateVariables] = useState([]);
+  const [templateValues, setTemplateValues] = useState({});
+  const [isTemplateActive, setIsTemplateActive] = useState(false);
+
+  const handleTemplateValueChange = (variable, value) => {
+    const updatedValues = { ...templateValues, [variable]: value };
+    setTemplateValues(updatedValues);
+    
+    // Perform substitution
+    let substituted = templateContent;
+    Object.keys(updatedValues).forEach(key => {
+      const val = updatedValues[key] || `{{${key}}}`;
+      const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+      substituted = substituted.replace(regex, val);
+    });
+    
+    setFinalDocument(substituted);
+    if (editor) {
+      editor.commands.setContent(substituted);
+    }
+  };
+
+  const [menuPosition, setMenuPosition] = useState(null);
+
   useEffect(() => {
     const initialPrompt = location.state?.initialPrompt || queryParams.get('prompt');
     if (initialPrompt) {
       setChatMessage(initialPrompt);
+    }
+    
+    if (location.state?.templateId) {
+      const content = location.state.templateContent || '';
+      const variables = location.state.templateVariables || [];
+      const titleVal = location.state.templateTitle || 'Document';
+      
+      setTemplateContent(content);
+      setTemplateVariables(variables);
+      setIsTemplateActive(true);
+      setTitle(titleVal);
+      setIsEditing(true);
+      
+      const initialValues = {};
+      variables.forEach(v => {
+        initialValues[v] = '';
+      });
+      setTemplateValues(initialValues);
+      setFinalDocument(content);
     }
   }, [location.state, location.search]);
 
@@ -89,6 +263,25 @@ const DocumentCreation = () => {
       return;
     }
     setIsShareModalOpen(true);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!mongoConversationId) {
+      toast.error('Please save the document first.');
+      return;
+    }
+    const confirmSave = window.confirm(
+      "To save this document as a template, please ensure you have wrapped all variables in double braces, e.g. {{client_name}} or {{amount}}.\n\nWould you like to save this document as a template now?"
+    );
+    if (!confirmSave) return;
+    
+    try {
+      const response = await axios.post(`/api/documents/conversations/${mongoConversationId}/save-as-template/`);
+      toast.success(`Template saved successfully! Saved ${response.data.variables?.length || 0} variables.`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to save template.');
+    }
   };
 
   useEffect(() => {
@@ -142,6 +335,48 @@ const DocumentCreation = () => {
       },
     },
   });
+
+  // selectionUpdate hook for inline AI actions floating menu
+  useEffect(() => {
+    if (!editor) return;
+    const updateMenu = () => {
+      const { from, to } = editor.state.selection;
+      if (from === to) {
+        setMenuPosition(null);
+        return;
+      }
+      
+      try {
+        const { view } = editor;
+        const start = view.coordsAtPos(from);
+        const end = view.coordsAtPos(to);
+        
+        const left = (start.left + end.left) / 2;
+        const top = start.top - 48;
+        
+        if (left > 0 && top > 0) {
+          setMenuPosition({ left, top });
+        } else {
+          setMenuPosition(null);
+        }
+      } catch (e) {
+        setMenuPosition(null);
+      }
+    };
+    
+    editor.on('selectionUpdate', updateMenu);
+    
+    return () => {
+      editor.off('selectionUpdate', updateMenu);
+    };
+  }, [editor]);
+
+  // template content loading effect
+  useEffect(() => {
+    if (editor && isTemplateActive && templateContent) {
+      editor.commands.setContent(templateContent);
+    }
+  }, [editor, isTemplateActive, templateContent]);
 
   // WebSocket connection and message handling
   useEffect(() => {
@@ -838,6 +1073,26 @@ const DocumentCreation = () => {
               {/* Divider */}
               <div className="w-px h-6 bg-border mx-1" />
 
+              {/* Clause Library Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (rightSidebarOpen && rightSidebarTab === 'clause-library') {
+                    setRightSidebarOpen(false);
+                  } else {
+                    setRightSidebarOpen(true);
+                    setRightSidebarTab('clause-library');
+                  }
+                }}
+                className={`border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg h-9 w-9 p-0 transition-all cursor-pointer flex items-center justify-center mr-1.5 ${
+                  rightSidebarOpen && rightSidebarTab === 'clause-library' ? 'bg-primary/10 text-primary border-primary/20' : ''
+                }`}
+                title="Clause Library"
+              >
+                <BookOpen className="w-4 h-4" />
+              </Button>
+
               {/* Overflow Dropdown */}
               <div className="relative">
                 <Button
@@ -853,6 +1108,21 @@ const DocumentCreation = () => {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOverflowOpen(false)} />
                     <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-md py-1 z-50 animate-fadeIn">
+                      <button
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          if (rightSidebarOpen && rightSidebarTab === 'clause-library') {
+                            setRightSidebarOpen(false);
+                          } else {
+                            setRightSidebarOpen(true);
+                            setRightSidebarTab('clause-library');
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
+                      >
+                        <BookOpen className="w-4 h-4 text-muted-foreground" />
+                        <span>Clause Library</span>
+                      </button>
                       {mongoConversationId && (
                         <>
                           <button
@@ -897,6 +1167,18 @@ const DocumentCreation = () => {
                         <Share2 className="w-4 h-4 text-muted-foreground" />
                         <span>Share Document</span>
                       </button>
+                      {mongoConversationId && (
+                        <button
+                          onClick={() => {
+                            setIsOverflowOpen(false);
+                            handleSaveAsTemplate();
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
+                        >
+                          <Save className="w-4 h-4 text-muted-foreground" />
+                          <span>Save as Template</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setIsOverflowOpen(false);
@@ -976,12 +1258,87 @@ const DocumentCreation = () => {
 
         {/* Document Area */}
         <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
+          {isTemplateActive && templateVariables.length > 0 && (
+            <div className="mb-6 p-5 bg-card border border-border rounded-xl shadow-sm space-y-4">
+              <div className="flex justify-between items-center select-none">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Fill Template Variables</h3>
+                  <p className="text-[11px] text-muted-foreground">The fields below will substitute the placeholders in the document in real time.</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setIsTemplateActive(false)}
+                  className="text-xs cursor-pointer h-8"
+                >
+                  Finish Editing Fields
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templateVariables.map((variable) => (
+                  <div key={variable} className="space-y-1">
+                    <Label htmlFor={`var-${variable}`} className="text-[10px] font-bold uppercase text-muted-foreground">{variable.split('_').join(' ')}</Label>
+                    <Input
+                      id={`var-${variable}`}
+                      value={templateValues[variable] || ''}
+                      onChange={(e) => handleTemplateValueChange(variable, e.target.value)}
+                      placeholder={`Enter ${variable.split('_').join(' ')}`}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {isEditing ? (
             <div className="border border-border rounded-xl overflow-hidden flex flex-col bg-card min-h-full">
               <MenuBar editor={editor} />
               <div ref={documentRef} className="flex-1 p-8 text-foreground bg-card">
                 <div className="max-w-5xl mx-auto w-full select-text">
                   <EditorContent editor={editor} />
+                  {menuPosition && isEditing && (
+                    <div 
+                      className="fixed z-50 flex bg-card border border-border shadow-lg rounded-lg overflow-hidden p-1 gap-1 items-center select-none"
+                      style={{
+                        top: `${menuPosition.top}px`,
+                        left: `${menuPosition.left}px`,
+                        transform: 'translateX(-50%)',
+                      }}
+                    >
+                      <button
+                        onClick={() => handleInlineAction('formal')}
+                        disabled={refiningAction !== null}
+                        className={`px-2.5 py-1 text-xs hover:bg-muted font-semibold rounded transition-all text-foreground flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {refiningAction === 'formal' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                        <span>Make Formal</span>
+                      </button>
+                      <button
+                        onClick={() => handleInlineAction('simplify')}
+                        disabled={refiningAction !== null}
+                        className={`px-2.5 py-1 text-xs hover:bg-muted font-semibold rounded transition-all text-foreground flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {refiningAction === 'simplify' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                        <span>Simplify</span>
+                      </button>
+                      <button
+                        onClick={() => handleInlineAction('favorable')}
+                        disabled={refiningAction !== null}
+                        className={`px-2.5 py-1 text-xs hover:bg-muted font-semibold rounded transition-all text-foreground flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {refiningAction === 'favorable' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                        <span>Make Favorable</span>
+                      </button>
+                      <button
+                        onClick={() => handleInlineAction('shorten')}
+                        disabled={refiningAction !== null}
+                        className={`px-2.5 py-1 text-xs hover:bg-muted font-semibold rounded transition-all text-foreground flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {refiningAction === 'shorten' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                        <span>Shorten</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1001,30 +1358,44 @@ const DocumentCreation = () => {
           ? 'translate-x-0 w-80 opacity-100' 
           : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:pointer-events-none'
       }`}>
-        {rightSidebarOpen && mongoConversationId && (
+        {rightSidebarOpen && (
           <div className="flex flex-col h-full">
             {/* Sidebar Tab Header */}
             <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0 bg-muted/20">
               <div className="flex gap-1 bg-muted p-1 rounded-lg">
+                {mongoConversationId && (
+                  <>
+                    <button
+                      onClick={() => setRightSidebarTab('comments')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        rightSidebarTab === 'comments'
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Comments
+                    </button>
+                    <button
+                      onClick={() => setRightSidebarTab('versions')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        rightSidebarTab === 'versions'
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Versions
+                    </button>
+                  </>
+                )}
                 <button
-                  onClick={() => setRightSidebarTab('comments')}
+                  onClick={() => setRightSidebarTab('clause-library')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                    rightSidebarTab === 'comments'
+                    (mongoConversationId ? rightSidebarTab : 'clause-library') === 'clause-library'
                       ? 'bg-card text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Comments
-                </button>
-                <button
-                  onClick={() => setRightSidebarTab('versions')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                    rightSidebarTab === 'versions'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Versions
+                  Clause Library
                 </button>
               </div>
               <button
@@ -1038,11 +1409,11 @@ const DocumentCreation = () => {
 
             {/* Sidebar Tab Content */}
             <div className="flex-grow overflow-hidden flex flex-col">
-              {rightSidebarTab === 'comments' ? (
+              {(mongoConversationId ? rightSidebarTab : 'clause-library') === 'comments' && mongoConversationId ? (
                 <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
                   <CommentList documentId={mongoConversationId} />
                 </div>
-              ) : (
+              ) : (mongoConversationId ? rightSidebarTab : 'clause-library') === 'versions' && mongoConversationId ? (
                 <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
                   <VersionsSidebar
                     conversationId={mongoConversationId}
@@ -1051,6 +1422,10 @@ const DocumentCreation = () => {
                     currentVersion={currentVersion}
                     onDeleteVersion={handleDeleteVersion}
                   />
+                </div>
+              ) : (
+                <div className="flex-grow overflow-hidden flex flex-col h-full">
+                  <ClauseLibraryPanel editor={editor} setIsEditing={setIsEditing} />
                 </div>
               )}
             </div>
@@ -1070,6 +1445,7 @@ const DocumentCreation = () => {
 
       {isSignatureModalOpen && (
         <SignatureModal
+          documentId={mongoConversationId}
           onClose={() => setIsSignatureModalOpen(false)}
           onSignatureAdded={async (signatureMarkdown, partyName) => {
             if (editor) {

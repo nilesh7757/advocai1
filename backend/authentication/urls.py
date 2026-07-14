@@ -16,7 +16,10 @@ from .views import (
     forgot_password_view,
     change_password_view,
     add_password_view,
-    reset_password_view
+    reset_password_view,
+    notifications_view,
+    mark_notification_read_view,
+    search_users_view
 )
 
 urlpatterns = [
@@ -37,4 +40,7 @@ urlpatterns = [
     path('lawyer/connections/<str:connection_id>/', lawyer_connection_update_view, name='lawyer_connection_update'),
     path('change-password/', change_password_view, name='change_password'),
     path('add-password/', add_password_view, name='add_password'),
+    path('notifications/', notifications_view, name='notifications'),
+    path('notifications/<str:notification_id>/read/', mark_notification_read_view, name='mark_notification_read'),
+    path('users/', search_users_view, name='search_users'),
 ]

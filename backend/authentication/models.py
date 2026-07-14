@@ -199,3 +199,24 @@ class LawyerConnectionRequest(Document):
     def save(self, *args, **kwargs):
         self.updated_at = datetime.utcnow()
         return super().save(*args, **kwargs)
+
+
+class Notification(Document):
+    """In-app notifications for @mentions and other actions"""
+    recipient = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
+    sender = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
+    notification_type = StringField(max_length=50, default='mention') # 'mention'
+    document_id = StringField(max_length=100, required=True)
+    message = StringField(required=True)
+    is_read = BooleanField(default=False)
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {
+        'collection': 'notifications',
+        'ordering': ['-created_at'],
+        'indexes': [
+            'recipient',
+            'is_read',
+            'created_at'
+        ]
+    }

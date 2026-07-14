@@ -39,6 +39,7 @@ const MyDocuments = () => {
   const { user } = useAuth();
   const [myDocumentsList, setMyDocumentsList] = useState([]);
   const [sharedWithMeDocumentsList, setSharedWithMeDocumentsList] = useState([]);
+  const [templatesList, setTemplatesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -86,6 +87,9 @@ const MyDocuments = () => {
 
       setMyDocumentsList(owned);
       setSharedWithMeDocumentsList(shared);
+      
+      const templatesResponse = await axios.get('/api/documents/templates/');
+      setTemplatesList(templatesResponse.data || []);
     } catch (err) {
       console.error('Error fetching documents:', err);
       setError('Failed to load documents.');
@@ -109,6 +113,17 @@ const MyDocuments = () => {
 
   const handleViewDocument = (documentId) => {
     navigate(`/document-creation/${documentId}`);
+  };
+
+  const handleUseTemplate = (template) => {
+    navigate('/document-creation', {
+      state: {
+        templateId: template.id,
+        templateContent: template.latest_document,
+        templateVariables: template.variables,
+        templateTitle: template.title
+      }
+    });
   };
 
   const handleDownloadPdf = async (documentId, title) => {
@@ -542,7 +557,7 @@ const MyDocuments = () => {
 
         {/* Tabs Area */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="my_documents" className="flex items-center justify-center gap-2">
               <span>My Documents</span>
               <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
@@ -553,6 +568,12 @@ const MyDocuments = () => {
               <span>Shared with Me</span>
               <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
                 {sharedWithMeDocumentsList.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center justify-center gap-2">
+              <span>Templates</span>
+              <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
+                {templatesList.length}
               </span>
             </TabsTrigger>
           </TabsList>
@@ -1253,6 +1274,57 @@ const MyDocuments = () => {
                   })}
                 </div>
               )
+            )}
+          </TabsContent>
+          <TabsContent value="templates">
+            {templatesList.length === 0 ? (
+              <div className="text-center py-16 space-y-6 max-w-lg mx-auto">
+                <div className="p-4 bg-primary/10 rounded-full text-primary w-16 h-16 flex items-center justify-center mx-auto border border-primary/20">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground mb-1">No Templates Found</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    You haven't saved any templates yet. In Document Creation, click the "Save as Template" option in the toolbar menu to save a document as a template.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templatesList.map((template) => (
+                  <Card key={template.id} className="bg-card border-border hover:border-primary/45 hover:shadow-md transition-all duration-300 flex flex-col justify-between p-5 rounded-xl border">
+                    <CardHeader className="pb-2 p-0 select-none">
+                      <CardTitle className="text-sm font-bold text-foreground truncate">{template.title}</CardTitle>
+                      <CardDescription className="text-[10px] text-muted-foreground mt-0.5">
+                        Created: {template.created_at ? new Date(template.created_at).toLocaleDateString() : 'N/A'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 p-0 mt-4 select-none">
+                      {template.variables && template.variables.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase text-muted-foreground">Template Fields</span>
+                          <div className="flex flex-wrap gap-1">
+                            {template.variables.map((v, i) => (
+                              <span key={i} className="px-1.5 py-0.5 rounded bg-primary/5 text-primary text-[9px] font-medium border border-primary/10">
+                                {v}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground italic">No placeholders detected.</p>
+                      )}
+                      
+                      <Button
+                        onClick={() => handleUseTemplate(template)}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-8 rounded cursor-pointer mt-2"
+                      >
+                        Use Template
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>

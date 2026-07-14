@@ -1,8 +1,6 @@
 import json
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import JSONParser
@@ -442,3 +440,163 @@ def version_detail(request, pk, version_number):
     except Exception as e:
         print(f"Error deleting document version in view: {e}")
         return Response({'error': f'An error occurred: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'POST', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def manage_signatures(request, pk):
+    """
+    GET: Fetch signature request statuses for a document.
+    POST: Set / add multiple signers.
+    PATCH: Update a specific signer's status.
+    """
+    from rest_framework.permissions import IsAuthenticated
+    from rest_framework.decorators import permission_classes
+    from .signature_mongo_client import (
+        get_signatures_for_document,
+        set_signers_for_document,
+        update_signer_status
+    )
+    from .mongo_client import get_conversation_by_id
+
+    conversation = get_conversation_by_id(pk)
+    if not conversation:
+        return Response({'error': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check permission (owner or shared)
+    # If request.user is authenticated, check matching username
+    username = getattr(request.user, 'username', None)
+    if not username:
+        return Response({'error': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+    is_owner = conversation.get('owner') == username
+    is_shared = any(u.get('username') == username for u in conversation.get('shared_with_users', []))
+    
+    if not is_owner and not is_shared:
+        return Response({'error': 'You do not have permission to access signatures for this document.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        signers = get_signatures_for_document(pk)
+        return Response({'signers': signers}, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        if not is_owner:
+            return Response({'error': 'Only the document owner can set signers.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        signers_list = request.data.get('signers')
+        if not isinstance(signers_list, list):
+            return Response({'error': 'signers must be a list of dicts.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        formatted = set_signers_for_document(pk, signers_list)
+        return Response({'signers': formatted}, status=status.HTTP_200_OK)
+
+    elif request.method == 'PATCH':
+        email = request.data.get('email')
+        status_val = request.data.get('status')
+        signature_url = request.data.get('signature_url')
+        
+        if not email or not status_val:
+            return Response({'error': 'email and status are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if status_val not in ['pending', 'signed', 'declined']:
+            return Response({'error': 'status must be pending, signed, or declined.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        success = update_signer_status(pk, email, status_val, signature_url)
+        if success:
+            signers = get_signatures_for_document(pk)
+            return Response({'success': True, 'signers': signers}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Signer with specified email not found in document.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_as_template(request, pk):
+    """
+    Duplicates a conversation's latest content, scans for variables,
+    and stores as a new template conversation.
+    """
+    import re
+    from .mongo_client import get_conversation_by_id, save_conversation
+    
+    conversation = get_conversation_by_id(pk)
+    if not conversation:
+        return Response({'error': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+    username = getattr(request.user, 'username', None)
+    if not username:
+        return Response({'error': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+    is_owner = conversation.get('owner') == username
+    is_shared = any(u.get('username') == username for u in conversation.get('shared_with_users', []))
+    if not is_owner and not is_shared:
+        return Response({'error': 'You do not have permission to access this document.'}, status=status.HTTP_403_FORBIDDEN)
+
+    versions = conversation.get('document_versions', [])
+    content = ""
+    if versions:
+        content = versions[-1].get('content', '')
+        
+    variables = re.findall(r'\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}', content)
+    variables = list(set(variables))
+    
+    template_title = f"{conversation.get('title', 'Untitled')} - Template"
+    
+    new_pk = save_conversation(
+        title=template_title,
+        messages=[],
+        initial_document_content=content,
+        uploaded_by=username,
+        notes="Saved as Template",
+        is_template=True,
+        template_variables=variables
+    )
+    
+    if new_pk:
+        return Response({
+            'id': new_pk,
+            'title': template_title,
+            'variables': variables,
+            'is_template': True
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({'error': 'Failed to save template.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def template_list(request):
+    """
+    Lists all template documents for the logged in user.
+    """
+    from .mongo_client import conversations_collection
+    
+    username = getattr(request.user, 'username', None)
+    if not username:
+        return Response({'error': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+    try:
+        templates = conversations_collection.find(
+            {'is_template': True, 'owner': username},
+            {'title': 1, 'created_at': 1, 'document_versions': 1, 'template_variables': 1}
+        )
+        
+        result = []
+        for temp in templates:
+            temp['_id'] = str(temp['_id'])
+            if 'document_versions' in temp and temp['document_versions']:
+                temp['latest_document'] = temp['document_versions'][-1]['content']
+            else:
+                temp['latest_document'] = ''
+            result.append({
+                'id': temp['_id'],
+                'title': temp.get('title'),
+                'created_at': temp.get('created_at').isoformat() if temp.get('created_at') else None,
+                'variables': temp.get('template_variables', []),
+                'latest_document': temp['latest_document']
+            })
+            
+        return Response(result, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error fetching templates: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/Components/ui/button";
 import { 
   User, 
@@ -14,16 +14,62 @@ import {
   MessageSquare, 
   LayoutDashboard,
   Sun,
-  Moon
+  Moon,
+  Bell,
+  Check
 } from "lucide-react";
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
 import { useTheme } from '../../context/ThemeContext'; // Import useTheme
+import axios from '../../api/axios';
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
+  const notificationsRef = useRef(null);
   const { user, isAuthenticated, logout } = useAuth(); // Use AuthContext
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get('/api/auth/notifications/');
+      setNotifications(response.data || []);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000); // refresh every 15s
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const markAsRead = async (id, documentId) => {
+    try {
+      await axios.patch(`/api/auth/notifications/${id}/read/`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setShowNotifications(false);
+      navigate(`/document-creation/${documentId}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -166,6 +212,60 @@ export default function Navbar() {
             </Button>
             {isAuthenticated ? (
               <>
+                {/* Notification Bell */}
+                <div ref={notificationsRef} className="relative">
+                  <Button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors relative flex items-center justify-center flex-shrink-0 cursor-pointer"
+                    title="Notifications"
+                  >
+                    <Bell size={16} />
+                    {notifications.filter(n => !n.is_read).length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                        {notifications.filter(n => !n.is_read).length}
+                      </span>
+                    )}
+                  </Button>
+                  
+                  {showNotifications && (
+                    <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-2xl z-50 w-72 py-2 select-none overflow-hidden max-h-80 overflow-y-auto custom-scrollbar">
+                      <div className="px-4 py-2 border-b border-border flex justify-between items-center">
+                        <span className="text-xs font-bold text-foreground">Notifications</span>
+                        {notifications.filter(n => !n.is_read).length > 0 && (
+                          <span className="text-[10px] text-muted-foreground">{notifications.filter(n => !n.is_read).length} unread</span>
+                        )}
+                      </div>
+                      {notifications.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic text-center py-6">No notifications yet.</p>
+                      ) : (
+                        <div className="divide-y divide-border">
+                          {notifications.map((n) => (
+                            <div
+                              key={n.id}
+                              onClick={() => markAsRead(n.id, n.document_id)}
+                              className={`p-3 text-left cursor-pointer hover:bg-muted/50 transition-colors flex items-start gap-2.5 ${
+                                !n.is_read ? 'bg-muted/20 font-semibold' : ''
+                              }`}
+                            >
+                              <div className="flex-1 space-y-1">
+                                <p className="text-xs text-foreground font-medium leading-normal">{n.message}</p>
+                                <p className="text-[9px] text-muted-foreground">
+                                  {n.created_at ? new Date(n.created_at).toLocaleDateString() : 'N/A'}
+                                </p>
+                              </div>
+                              {!n.is_read && (
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Link to="/profile" className="flex items-center justify-center flex-shrink-0" title="View Profile">
                   {user && user.profile_picture ? (
                     <img src={user.profile_picture} alt="Profile" className="w-9 h-9 rounded-full border-2 border-primary/50 hover:border-primary hover:scale-105 transition-all duration-200 object-cover" />

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('summarize/', views.summarize_document, name='summarize_document'),
+    path('compare/', views.compare_documents, name='compare_documents'),
     path('chat/', views.chat_message, name='chat_message'),
     path('sessions/', views.user_sessions, name='user_sessions'),
     path('sessions/<str:session_id>/', views.session_detail, name='session_detail'),

@@ -2762,3 +2762,142 @@ def update_session_tags(request, session_id):
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def compare_documents(request):
+    """
+    Compares two versions of a contract and assesses risk changes per section.
+    """
+    import difflib
+    document_a = request.FILES.get('document_a')
+    document_b = request.FILES.get('document_b')
+    if not document_a or not document_b:
+        return Response({'error': 'Both document_a and document_b files are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        text_a = extract_text_from_file(document_a)
+        text_b = extract_text_from_file(document_b)
+        
+        if text_a is None or text_b is None:
+            return Response({'error': 'Failed to extract text from one or both files.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        paras_a = [p.strip() for p in re.split(r'\n\s*\n', text_a) if p.strip()]
+        paras_b = [p.strip() for p in re.split(r'\n\s*\n', text_b) if p.strip()]
+        
+        matcher = difflib.SequenceMatcher(None, paras_a, paras_b)
+        diff_sections = []
+        
+        def get_risk_details(text):
+            if not text.strip():
+                return 0, []
+            risks = detect_enhanced_risks(text)
+            if not risks:
+                return 0, []
+            max_score = max(r['risk_score'] for r in risks)
+            explanations = [f"{r['category'].upper()}: {r['rationale']}" for r in risks]
+            return max_score, explanations
+
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'equal':
+                for i in range(i1, i2):
+                    diff_sections.append({
+                        'type': 'unchanged',
+                        'text_a': paras_a[i],
+                        'text_b': paras_a[i],
+                        'risk_verdict': 'neutral',
+                        'risk_explanation': 'No changes made.'
+                    })
+            elif tag == 'delete':
+                for i in range(i1, i2):
+                    score_a, exp_a = get_risk_details(paras_a[i])
+                    verdict = 'risk decreased' if score_a > 0 else 'neutral'
+                    explanation = 'A potentially risky clause has been removed.' if score_a > 0 else 'Clause removed.'
+                    diff_sections.append({
+                        'type': 'removed',
+                        'text_a': paras_a[i],
+                        'text_b': '',
+                        'risk_verdict': verdict,
+                        'risk_explanation': explanation
+                    })
+            elif tag == 'insert':
+                for j in range(j1, j2):
+                    score_b, exp_b = get_risk_details(paras_b[j])
+                    verdict = 'risk increased' if score_b > 0 else 'neutral'
+                    explanation = f"New clause introduced a potential risk: {', '.join(exp_b)}" if score_b > 0 else 'New clause added with minimal or no risk.'
+                    diff_sections.append({
+                        'type': 'added',
+                        'text_a': '',
+                        'text_b': paras_b[j],
+                        'risk_verdict': verdict,
+                        'risk_explanation': explanation
+                    })
+            elif tag == 'replace':
+                len_a = i2 - i1
+                len_b = j2 - j1
+                max_len = max(len_a, len_b)
+                for offset in range(max_len):
+                    idx_a = i1 + offset
+                    idx_b = j1 + offset
+                    if idx_a < i2 and idx_b < j2:
+                        s_a, e_a = get_risk_details(paras_a[idx_a])
+                        s_b, e_b = get_risk_details(paras_b[idx_b])
+                        if s_b > s_a:
+                            verdict = 'risk increased'
+                            explanation = f"Modified text increased the risk score from {s_a} to {s_b}. Issues: {', '.join(e_b)}"
+                        elif s_b < s_a:
+                            verdict = 'risk decreased'
+                            explanation = f"Modified text reduced the risk score from {s_a} to {s_b}."
+                        else:
+                            verdict = 'neutral'
+                            explanation = 'Modifications did not significantly alter the risk level.'
+                        diff_sections.append({
+                            'type': 'modified',
+                            'text_a': paras_a[idx_a],
+                            'text_b': paras_b[idx_b],
+                            'risk_verdict': verdict,
+                            'risk_explanation': explanation
+                        })
+                    elif idx_a < i2:
+                        s_a, e_a = get_risk_details(paras_a[idx_a])
+                        verdict = 'risk decreased' if s_a > 0 else 'neutral'
+                        explanation = 'A potentially risky clause has been removed.' if s_a > 0 else 'Clause removed.'
+                        diff_sections.append({
+                            'type': 'removed',
+                            'text_a': paras_a[idx_a],
+                            'text_b': '',
+                            'risk_verdict': verdict,
+                            'risk_explanation': explanation
+                        })
+                    elif idx_b < j2:
+                        s_b, e_b = get_risk_details(paras_b[idx_b])
+                        verdict = 'risk increased' if s_b > 0 else 'neutral'
+                        explanation = f"New clause introduced a potential risk: {', '.join(e_b)}" if s_b > 0 else 'New clause added with minimal or no risk.'
+                        diff_sections.append({
+                            'type': 'added',
+                            'text_a': '',
+                            'text_b': paras_b[idx_b],
+                            'risk_verdict': verdict,
+                            'risk_explanation': explanation
+                        })
+        
+        increased_count = sum(1 for sec in diff_sections if sec['risk_verdict'] == 'risk increased')
+        decreased_count = sum(1 for sec in diff_sections if sec['risk_verdict'] == 'risk decreased')
+        
+        if increased_count > 0:
+            overall_verdict = 'risk increased'
+        elif decreased_count > 0:
+            overall_verdict = 'risk decreased'
+        else:
+            overall_verdict = 'neutral'
+            
+        return Response({
+            'diff_sections': diff_sections,
+            'overall_verdict': overall_verdict
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error in compare_documents: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

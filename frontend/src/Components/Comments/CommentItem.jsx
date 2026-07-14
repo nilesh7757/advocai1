@@ -26,6 +26,21 @@ const CommentItem = ({ comment, documentId, onCommentAdded, highlightCommentId }
 
 
 
+  const renderCommentContent = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(@[a-zA-Z0-9_-]+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        return (
+          <span key={i} className="text-primary font-bold bg-primary/10 px-1 py-0.5 rounded text-[11px] mx-0.5 select-all">
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div
       ref={commentRef}
@@ -38,7 +53,7 @@ const CommentItem = ({ comment, documentId, onCommentAdded, highlightCommentId }
         <p className="font-semibold text-foreground">{comment.user}</p>
         <p className="text-sm text-muted-foreground">{new Date(comment.created_at).toLocaleString()}</p>
       </div>
-      <p className="text-foreground mb-3" style={{wordBreak: 'break-word'}}>{comment.content}</p>
+      <p className="text-foreground mb-3 text-sm leading-relaxed" style={{wordBreak: 'break-word'}}>{renderCommentContent(comment.content)}</p>
       <div className="flex items-center gap-3">
         <button
           onClick={() => setShowReplyForm(!showReplyForm)}
