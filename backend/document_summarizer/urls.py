@@ -6,6 +6,7 @@ urlpatterns = [
     path('chat/', views.chat_message, name='chat_message'),
     path('sessions/', views.user_sessions, name='user_sessions'),
     path('sessions/<str:session_id>/', views.session_detail, name='session_detail'),
+    path('sessions/<str:session_id>/tags/', views.update_session_tags, name='update_session_tags'),
     path('sessions/<str:session_id>/history/', views.chat_history, name='chat_history'),
     path('sessions/<str:session_id>/status/', views.task_status, name='task_status'),
 ]

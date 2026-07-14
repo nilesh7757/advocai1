@@ -33,7 +33,8 @@ import {
   getUserSessions as getUserSessionsApi, 
   getChatHistory as getChatHistoryApi, 
   sendChatMessage as sendChatMessageApi,
-  deleteSession as deleteSessionApi 
+  deleteSession as deleteSessionApi,
+  updateSessionTags as updateSessionTagsApi 
 } from '../utils/api';
 
 const SCORE_LABELS = {
@@ -84,6 +85,9 @@ const DocumentAnalyzer = () => {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dragActive, setDragActive] = useState(false);
+  const [editingSessionTagsId, setEditingSessionTagsId] = useState(null);
+  const [newTagsInput, setNewTagsInput] = useState('');
+  const [selectedTagFilter, setSelectedTagFilter] = useState('');
   const [isSummaryCopied, setIsSummaryCopied] = useState(false); // New state for copy status
   const [expandedSection, setExpandedSection] = useState(null); // Modal state: 'preview', 'analysis', 'chat', or null
   const [severityFilter, setSeverityFilter] = useState('All'); // Severity filter: 'All', 'Critical', 'High', 'Medium', 'Low'
@@ -108,6 +112,32 @@ const DocumentAnalyzer = () => {
     setActiveClauseIndex(null);
     setShowFullSummary(false);
     setChatOpen(false);
+  };
+
+  const handleSaveTags = async (sessionIdToSave) => {
+    try {
+      const tagList = newTagsInput
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+        
+      await updateSessionTagsApi(sessionIdToSave, tagList);
+      
+      setSessions((prevSessions) =>
+        prevSessions.map((s) => {
+          if ((s.id ?? s._id) === sessionIdToSave) {
+            return { ...s, tags: tagList };
+          }
+          return s;
+        })
+      );
+      
+      toast.success('Tags updated successfully!');
+      setEditingSessionTagsId(null);
+    } catch (err) {
+      console.error('Error saving tags:', err);
+      toast.error('Failed to update tags.');
+    }
   };
 
   const handleDeleteSession = async (e, sessionIdToDelete) => {
@@ -597,6 +627,14 @@ const DocumentAnalyzer = () => {
     );
   };
 
+  const allUniqueTags = Array.from(
+    new Set(sessions.flatMap(session => session.tags || []))
+  ).sort();
+
+  const filteredSessions = selectedTagFilter
+    ? sessions.filter(session => (session.tags || []).includes(selectedTagFilter))
+    : sessions;
+
   return (
     <div className="flex h-[calc(100vh-var(--navbar-height))] bg-background overflow-hidden relative">
       {/* Mobile Sidebar Backdrop */}
@@ -641,14 +679,31 @@ const DocumentAnalyzer = () => {
         </div>
 
         {/* Sidebar Session List */}
-        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar flex flex-col gap-2">
+          {/* Tag filter block */}
+          {sidebarOpen && sessions.length > 0 && (
+            <div className="px-1 py-1 flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase select-none">Tag Filter:</span>
+              <select
+                value={selectedTagFilter}
+                onChange={(e) => setSelectedTagFilter(e.target.value)}
+                className="flex-1 bg-background text-foreground text-[10px] font-semibold rounded border border-border px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                <option value="">All tags</option>
+                {allUniqueTags.map(tag => (
+                  <option key={tag} value={tag}>{tag}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {loadingSessions ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
-          ) : sessions.length > 0 ? (
+          ) : filteredSessions.length > 0 ? (
             <div className="space-y-1">
-              {sessions.map((session) => {
+              {filteredSessions.map((session) => {
                 const isSelected = sessionId === (session.id ?? session._id);
                 return (
                   <div
@@ -656,7 +711,7 @@ const DocumentAnalyzer = () => {
                     className="relative group w-full"
                   >
                     {sidebarOpen ? (
-                      <button
+                      <div
                         onClick={() => openSession(session)}
                         className={`w-full text-left p-3 pr-10 rounded-lg border transition-all duration-200 cursor-pointer ${
                           isSelected
@@ -670,12 +725,74 @@ const DocumentAnalyzer = () => {
                             <p className="text-xs text-foreground font-medium line-clamp-2 mb-1">
                               {session.summary_preview || session.title || 'Document Analysis'}
                             </p>
-                            <span className="text-[10px] text-muted-foreground">
-                              {formatDate(session.created_at || session.createdAt || session.date)}
-                            </span>
+                            
+                            {/* Session Tag pills */}
+                            {session.tags && session.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-1.5">
+                                {session.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="bg-muted text-muted-foreground text-[9px] font-bold rounded-full px-1.5 py-0.5 border border-border/40"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {editingSessionTagsId === (session.id ?? session._id) ? (
+                              <div className="mt-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="text"
+                                  value={newTagsInput}
+                                  onChange={(e) => setNewTagsInput(e.target.value)}
+                                  placeholder="NDA, Rental..."
+                                  className="w-full bg-background border border-border text-[10px] rounded px-1 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleSaveTags(session.id ?? session._id);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSessionTagsId(null);
+                                    }
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleSaveTags(session.id ?? session._id)}
+                                  className="px-1 py-0.5 text-[10px] text-primary font-bold hover:bg-muted rounded cursor-pointer"
+                                  title="Save"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={() => setEditingSessionTagsId(null)}
+                                  className="px-1 py-0.5 text-[10px] text-muted-foreground font-bold hover:bg-muted rounded cursor-pointer"
+                                  title="Cancel"
+                                >
+                                  ✗
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="text-[9px] text-muted-foreground">
+                                  {formatDate(session.created_at || session.createdAt || session.date)}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingSessionTagsId(session.id ?? session._id);
+                                    setNewTagsInput((session.tags || []).join(', '));
+                                  }}
+                                  className="text-[9px] text-primary hover:underline px-1 py-0.5 rounded hover:bg-muted cursor-pointer flex items-center gap-0.5 font-bold"
+                                  title="Edit Tags"
+                                >
+                                  + Tag
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ) : (
                       <button
                         onClick={() => openSession(session)}
@@ -704,7 +821,7 @@ const DocumentAnalyzer = () => {
           ) : sidebarOpen ? (
             <div className="text-center py-12 px-4">
               <History className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">No previous sessions</p>
+              <p className="text-xs text-muted-foreground">No matching sessions</p>
             </div>
           ) : null}
         </div>

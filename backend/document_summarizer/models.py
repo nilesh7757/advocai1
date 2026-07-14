@@ -21,6 +21,7 @@ class DocumentSession(Document):
     document_type = StringField()
     comprehensive_summary = DictField()
     document_type_confidence = FloatField()
+    tags = ListField(StringField(), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     
     meta = {

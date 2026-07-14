@@ -2566,6 +2566,7 @@ def user_sessions(request):
                 'document_preview': session.document_text[:100] + '...' if len(session.document_text) > 100 else session.document_text,
                 'highlighted_preview': session.highlighted_preview or '',
                 'high_risk_clause_count': len(session.high_risk_clauses or []),
+                'tags': getattr(session, 'tags', []) or [],
             })
         
         return Response({
@@ -2705,6 +2706,7 @@ def session_detail(request, session_id):
                 'high_risk_clauses': session.high_risk_clauses or [],
                 'preview_text': session.document_text,
                 'document_text': session.document_text,
+                'tags': getattr(session, 'tags', []) or [],
                 'created_at': session.created_at.isoformat()
             },
             'messages': messages_data
@@ -2714,3 +2716,35 @@ def session_detail(request, session_id):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_session_tags(request, session_id):
+    """Update tags for a specific document session"""
+    try:
+        user = request.user
+        
+        session = DocumentSession.objects(id=session_id).first()
+        if not session:
+            return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        if str(session.user.id) != str(user.id):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        tags = request.data.get('tags')
+        if not isinstance(tags, list):
+            return Response({'error': 'Tags must be a list of strings'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Clean and sanitize tags (strip whitespace, ensure unique list)
+        cleaned_tags = list(set([str(tag).strip() for tag in tags if tag]))
+        session.tags = cleaned_tags
+        session.save()
+        
+        return Response({
+            'success': True,
+            'tags': session.tags
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

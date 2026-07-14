@@ -36,3 +36,8 @@ export const deleteSession = async (sessionId) => {
   const response = await axios.delete(`api/summarizer/sessions/${sessionId}/`);
   return response.data;
 };
+
+export const updateSessionTags = async (sessionId, tags) => {
+  const response = await axios.patch(`api/summarizer/sessions/${sessionId}/tags/`, { tags });
+  return response.data;
+};
