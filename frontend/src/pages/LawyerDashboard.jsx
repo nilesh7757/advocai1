@@ -8,9 +8,22 @@ import { Button } from "@/Components/ui/button";
 import { BadgeCheck, Clock, ShieldAlert, MessageSquare } from "lucide-react";
 
 const statusColors = {
-  pending: "text-yellow-400",
-  approved: "text-green-400",
-  rejected: "text-red-400",
+  pending: "text-muted-foreground",
+  approved: "text-primary",
+  rejected: "text-destructive",
+};
+
+const monthNames = {
+  '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
+  '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+};
+
+const getMonthLabel = (monthStr) => {
+  if (!monthStr || !monthStr.includes('-')) return monthStr;
+  const parts = monthStr.split('-');
+  const mm = parts[1];
+  const yearShort = parts[0].slice(-2);
+  return `${monthNames[mm] || mm} '${yearShort}`;
 };
 
 const formatDateTime = (value) => {
@@ -153,22 +166,76 @@ const LawyerDashboard = () => {
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Pending</p>
-            <p className="text-2xl font-bold text-yellow-300">{summary.pending_requests}</p>
+            <p className="text-2xl font-bold text-muted-foreground">{summary.pending_requests}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Accepted</p>
-            <p className="text-2xl font-bold text-green-300">{summary.accepted_requests}</p>
+            <p className="text-2xl font-bold text-primary">{summary.accepted_requests}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Declined</p>
-            <p className="text-2xl font-bold text-red-300">{summary.declined_requests}</p>
+            <p className="text-2xl font-bold text-destructive">{summary.declined_requests}</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Requests Monthly Trend Chart */}
+      {dashboard.requests_by_month && dashboard.requests_by_month.length > 0 && (
+        <Card className="bg-card border-border backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-foreground text-xl">Connection Requests Trend</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Number of connection requests received over the last 6 months.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="flex flex-col items-center">
+              {/* Bar Chart Container */}
+              <div className="w-full max-w-2xl h-64 border-b border-border flex items-end justify-between px-6 pb-2 select-none">
+                {(() => {
+                  const counts = dashboard.requests_by_month.map(item => item.count || 0);
+                  const maxCount = Math.max(...counts, 1);
+                  
+                  return dashboard.requests_by_month.map((item, idx) => {
+                    const pct = ((item.count || 0) / maxCount) * 100;
+                    const heightPct = item.count > 0 ? Math.max(pct, 4) : 0;
+                    
+                    return (
+                      <div key={idx} className="flex flex-col items-center group relative w-12 md:w-16">
+                        <div className="absolute bottom-full mb-2 bg-popover text-popover-foreground border border-border px-2.5 py-1 rounded text-xs font-semibold shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap">
+                          {item.count} {item.count === 1 ? 'request' : 'requests'}
+                        </div>
+                        
+                        <div
+                          style={{ height: `${heightPct}%` }}
+                          className="w-full bg-primary hover:bg-primary/95 rounded-t transition-all duration-300"
+                        />
+                        
+                        <span className="text-[10px] text-muted-foreground font-semibold mt-1">
+                          {item.count}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+              
+              {/* Labels Row */}
+              <div className="w-full max-w-2xl flex justify-between px-6 pt-2 select-none">
+                {dashboard.requests_by_month.map((item, idx) => (
+                  <span key={idx} className="text-xs font-medium text-muted-foreground w-12 md:w-16 text-center">
+                    {getMonthLabel(item.month)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-card border-border">
         <CardHeader>

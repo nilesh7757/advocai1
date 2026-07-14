@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { User, Mail, Phone, GraduationCap, Building, Clock, DollarSign } from "lucide-react";
+import { User, Mail, Phone, GraduationCap, Building, Clock, DollarSign, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/Card";
 import { Label } from "@/Components/ui/Label";
 import axios from "../api/axios";
@@ -131,10 +131,45 @@ const LawyerProfile = () => {
             <CardDescription className="text-gray-400">
               {profileData.education || profileData.specializations?.join(', ') || 'Legal Professional'}
             </CardDescription>
-            <div className="mt-4 flex justify-center">
+
+            {/* Trust Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3 select-none">
+              <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] md:text-xs font-semibold rounded-full px-2.5 py-0.5 border border-primary/20">
+                <Check className="w-3 h-3 flex-shrink-0" /> Bar Council Verified
+              </span>
+              {Number(experienceYears) >= 10 ? (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] md:text-xs font-semibold rounded-full px-2.5 py-0.5 border border-primary/20">
+                  10+ Years Experience
+                </span>
+              ) : Number(experienceYears) >= 5 ? (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] md:text-xs font-semibold rounded-full px-2.5 py-0.5 border border-primary/20">
+                  5+ Years Experience
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-col items-center justify-center">
               <Button onClick={openConnectModal} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Connect with {lawyerUser?.name || 'Lawyer'}
               </Button>
+              
+              {/* Connection Stats */}
+              {(profileData.avg_response_time_hours !== null || profileData.acceptance_rate !== null) && (
+                <div className="mt-4 flex flex-col items-center justify-center gap-1.5 text-xs text-gray-400 select-none">
+                  {profileData.avg_response_time_hours !== null && (
+                    <p className="flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                      Typically responds within {profileData.avg_response_time_hours} hours
+                    </p>
+                  )}
+                  {profileData.acceptance_rate !== null && (
+                    <p className="flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                      {profileData.acceptance_rate}% acceptance rate
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-8">

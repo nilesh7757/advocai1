@@ -6,6 +6,9 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ConnectModal from '../Components/ConnectModal';
+import { Search, Check } from 'lucide-react';
+import { Input } from '../Components/ui/Input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../Components/ui/Select';
 
 const LawyerConnect = () => {
   const navigate = useNavigate();
@@ -15,6 +18,8 @@ const LawyerConnect = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedExperience, setSelectedExperience] = useState('any');
   const [allSpecializations, setAllSpecializations] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLawyer, setSelectedLawyer] = useState(null);
@@ -46,19 +51,54 @@ const LawyerConnect = () => {
   }, []);
 
   useEffect(() => {
+    let temp = lawyers;
+    
+    // 1. Specialization Filter
     if (selectedSpecialization) {
-      const filtered = lawyers.filter(lawyer => 
+      temp = temp.filter(lawyer => 
         lawyer.specializations && 
         Array.isArray(lawyer.specializations) &&
         lawyer.specializations.some(spec => 
           spec.toLowerCase().includes(selectedSpecialization.toLowerCase())
         )
       );
-      setFilteredLawyers(filtered);
-    } else {
-      setFilteredLawyers(lawyers);
     }
-  }, [selectedSpecialization, lawyers]);
+    
+    // 2. Text Search Filter
+    if (searchText.trim()) {
+      const query = searchText.toLowerCase().trim();
+      temp = temp.filter(lawyer => {
+        const name = (lawyer.user?.name || '').toLowerCase();
+        const username = (lawyer.user?.username || '').toLowerCase();
+        return name.includes(query) || username.includes(query);
+      });
+    }
+    
+    // 3. Experience Range Filter
+    if (selectedExperience && selectedExperience !== 'any') {
+      temp = temp.filter(lawyer => {
+        const exp = Number(lawyer.experience_years);
+        if (Number.isNaN(exp)) return false;
+        
+        if (selectedExperience === '0-3') {
+          return exp >= 0 && exp <= 3;
+        } else if (selectedExperience === '3-7') {
+          return exp >= 3 && exp <= 7;
+        } else if (selectedExperience === '7+') {
+          return exp >= 7;
+        }
+        return true;
+      });
+    }
+
+    /* 
+      TODO: Add consultation fee range filter once consultation_fee field 
+      in backend/authentication/models.py is updated to a numeric field 
+      from its current free-text StringField format.
+    */
+
+    setFilteredLawyers(temp);
+  }, [selectedSpecialization, searchText, selectedExperience, lawyers]);
 
   const openConnectModal = (lawyer) => {
     setSelectedLawyer(lawyer);
@@ -124,6 +164,61 @@ const LawyerConnect = () => {
           </p>
         </div>
 
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8 bg-card border border-border p-4 rounded-xl shadow-sm select-none">
+          <div className="flex-1 relative flex items-center">
+            <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search by lawyer name or username..."
+              className="pl-9 h-10 border-border/80 focus:border-primary"
+            />
+          </div>
+
+          <div className="w-full md:w-56">
+            <Select
+              value={selectedSpecialization || "all"}
+              onValueChange={(val) => setSelectedSpecialization(val === "all" ? "" : val)}
+            >
+              <SelectTrigger className="h-10 border-border/80">
+                <SelectValue placeholder="All Specializations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Specializations</SelectItem>
+                {allSpecializations.map((spec) => (
+                  <SelectItem key={spec} value={spec}>
+                    {spec}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full md:w-48">
+            <Select
+              value={selectedExperience || "any"}
+              onValueChange={setSelectedExperience}
+            >
+              <SelectTrigger className="h-10 border-border/80">
+                <SelectValue placeholder="Any Experience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any Experience</SelectItem>
+                <SelectItem value="0-3">0-3 years</SelectItem>
+                <SelectItem value="3-7">3-7 years</SelectItem>
+                <SelectItem value="7+">7+ years</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 
+            TODO: Add consultation fee range filter once consultation_fee field 
+            in backend/authentication/models.py is updated to a numeric field 
+            from its current free-text StringField format.
+          */}
+        </div>
+
         {/* Lawyers Grid */}
         {loading && (
           <div className="text-center text-gray-400">Loading vetted lawyers...</div>
@@ -162,6 +257,22 @@ const LawyerConnect = () => {
                     ? lawyer.specializations.join(', ')
                     : 'General Practice'}
                 </CardDescription>
+
+                {/* Trust Badges */}
+                <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5 select-none">
+                  <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5 border border-primary/20">
+                    <Check className="w-2.5 h-2.5 flex-shrink-0" /> Bar Council Verified
+                  </span>
+                  {Number(lawyer.experience_years) >= 10 ? (
+                    <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5 border border-primary/20">
+                      10+ Years Exp
+                    </span>
+                  ) : Number(lawyer.experience_years) >= 5 ? (
+                    <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5 border border-primary/20">
+                      5+ Years Exp
+                    </span>
+                  ) : null}
+                </div>
               </CardHeader>
               <CardContent className="p-0 mt-auto space-y-3 text-sm text-muted-foreground">
                 <div className="flex flex-col gap-1">

@@ -49,7 +49,35 @@ def lawyer_detail_view(request, lawyer_id):
         return Response({'error': 'Lawyer profile not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = LawyerProfileSerializer(profile)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    data = serializer.data
+
+    # Calculate stats
+    requests = LawyerConnectionRequest.objects(lawyer=user)
+    accepted_count = requests.filter(status='accepted').count()
+    declined_count = requests.filter(status='declined').count()
+    decided_count = accepted_count + declined_count
+    
+    acceptance_rate = None
+    if decided_count > 0:
+        acceptance_rate = int(round((accepted_count / decided_count) * 100))
+        
+    decided_requests = requests.filter(status__in=['accepted', 'declined'])
+    avg_response_time_hours = None
+    total_seconds = 0
+    count = 0
+    for req in decided_requests:
+        if req.created_at and req.updated_at:
+            dt = req.updated_at - req.created_at
+            total_seconds += dt.total_seconds()
+            count += 1
+            
+    if count > 0:
+        avg_response_time_hours = round(total_seconds / (count * 3600), 1)
+        
+    data['acceptance_rate'] = acceptance_rate
+    data['avg_response_time_hours'] = avg_response_time_hours
+
+    return Response(data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -135,11 +163,35 @@ def lawyer_dashboard_view(request):
         'declined_requests': connection_requests.filter(status='declined').count(),
     }
 
+    # Calculate requests by month for the last 6 months
+    now = datetime.utcnow()
+    current_year = now.year
+    current_month = now.month
+    
+    months_list = []
+    for i in range(5, -1, -1):
+        m = current_month - i
+        y = current_year
+        if m <= 0:
+            m += 12
+            y -= 1
+        months_list.append(f"{y:04d}-{m:02d}")
+
+    requests_by_month = {m: 0 for m in months_list}
+    for req in connection_requests:
+        if req.created_at:
+            m_str = req.created_at.strftime('%Y-%m')
+            if m_str in requests_by_month:
+                requests_by_month[m_str] += 1
+
+    requests_by_month_list = [{'month': m, 'count': requests_by_month[m]} for m in months_list]
+
     return Response({
         'profile': profile_data,
         'user': UserSerializer(request.user).data,
         'connections': connection_serializer.data,
         'summary': summary,
+        'requests_by_month': requests_by_month_list,
     }, status=status.HTTP_200_OK)
 
 
