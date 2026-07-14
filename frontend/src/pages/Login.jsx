@@ -125,7 +125,7 @@ const Login = () => {
         muted
         playsInline
         className="absolute inset-0 w-full h-full object-cover pointer-events-none grayscale opacity-[0.15] hidden sm:block"
-        src="https://videos.pexels.com/video-files/5311423/5311423-hd_1280_720_30fps.mp4"
+        src="/signing video.mp4"
       />
 
       {/* Dot-grid fallback (visible while video loads, and always on mobile) */}
