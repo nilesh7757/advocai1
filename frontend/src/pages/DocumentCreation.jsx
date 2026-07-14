@@ -8,6 +8,7 @@ import DOMPurify from 'dompurify';
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/Components/ui/Card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/Components/ui/dialog";
 
 import { useEditor, EditorContent, Editor } from '@tiptap/react'; // Import Editor
 import StarterKit from '@tiptap/starter-kit'; // Corrected import
@@ -168,6 +169,7 @@ const DocumentCreation = () => {
 
   const documentRef = useRef(null); // Ref for the document area
   const [isZenMode, setIsZenMode] = useState(false); // Zen mode state
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   // Inline AI refinement actions state and helper
   const [refiningAction, setRefiningAction] = useState(null);
@@ -293,6 +295,7 @@ const DocumentCreation = () => {
 
   useEffect(() => {
     const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
       if (window.innerWidth < 1024) {
         setSidebarOpen(false);
       } else {
@@ -1097,124 +1100,160 @@ const DocumentCreation = () => {
                 >
                   ⋯
                 </Button>
-                {isOverflowOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsOverflowOpen(false)} />
-                    <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-md py-1 z-50 animate-fadeIn">
-                      <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          if (rightSidebarOpen && rightSidebarTab === 'clause-library') {
+                {(() => {
+                  const menuItems = [
+                    {
+                      id: 'clause-library',
+                      label: 'Clause Library',
+                      icon: BookOpen,
+                      onClick: () => {
+                        if (rightSidebarOpen && rightSidebarTab === 'clause-library') {
+                          setRightSidebarOpen(false);
+                        } else {
+                          setRightSidebarOpen(true);
+                          setRightSidebarTab('clause-library');
+                        }
+                      }
+                    }
+                  ];
+
+                  if (mongoConversationId) {
+                    menuItems.push(
+                      {
+                        id: 'comments',
+                        label: 'Comments',
+                        icon: MessageCircle,
+                        onClick: () => {
+                          if (rightSidebarOpen && rightSidebarTab === 'comments') {
                             setRightSidebarOpen(false);
                           } else {
                             setRightSidebarOpen(true);
-                            setRightSidebarTab('clause-library');
+                            setRightSidebarTab('comments');
                           }
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                      >
-                        <BookOpen className="w-4 h-4 text-muted-foreground" />
-                        <span>Clause Library</span>
-                      </button>
-                      {mongoConversationId && (
+                        }
+                      },
+                      {
+                        id: 'versions',
+                        label: 'Versions',
+                        icon: History,
+                        onClick: () => {
+                          if (rightSidebarOpen && rightSidebarTab === 'versions') {
+                            setRightSidebarOpen(false);
+                          } else {
+                            setRightSidebarOpen(true);
+                            setRightSidebarTab('versions');
+                          }
+                        }
+                      }
+                    );
+                  }
+
+                  menuItems.push({
+                    id: 'share',
+                    label: 'Share Document',
+                    icon: Share2,
+                    onClick: handleShareDocument
+                  });
+
+                  if (mongoConversationId) {
+                    menuItems.push({
+                      id: 'save-template',
+                      label: 'Save as Template',
+                      icon: Save,
+                      onClick: handleSaveAsTemplate
+                    });
+                  }
+
+                  menuItems.push(
+                    {
+                      id: 'zen',
+                      label: 'Zen Mode',
+                      icon: Maximize,
+                      onClick: () => setIsZenMode(true)
+                    },
+                    {
+                      id: 'signature',
+                      label: 'Add Signature',
+                      icon: PenTool,
+                      onClick: () => setIsSignatureModalOpen(true)
+                    },
+                    {
+                      id: 'download-pdf',
+                      label: 'Download PDF',
+                      icon: Download,
+                      onClick: handleDownloadPdf
+                    },
+                    {
+                      id: 'download-word',
+                      label: 'Download Word',
+                      icon: FileText,
+                      onClick: handleDownloadDocx
+                    }
+                  );
+
+                  return (
+                    <>
+                      {/* Desktop Dropdown */}
+                      {!isMobile && isOverflowOpen && (
                         <>
-                          <button
-                            onClick={() => {
-                              setIsOverflowOpen(false);
-                              if (rightSidebarOpen && rightSidebarTab === 'comments') {
-                                setRightSidebarOpen(false);
-                              } else {
-                                setRightSidebarOpen(true);
-                                setRightSidebarTab('comments');
-                              }
-                            }}
-                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                          >
-                            <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                            <span>Comments</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setIsOverflowOpen(false);
-                              if (rightSidebarOpen && rightSidebarTab === 'versions') {
-                                setRightSidebarOpen(false);
-                              } else {
-                                setRightSidebarOpen(true);
-                                setRightSidebarTab('versions');
-                              }
-                            }}
-                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                          >
-                            <History className="w-4 h-4 text-muted-foreground" />
-                            <span>Versions</span>
-                          </button>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsOverflowOpen(false)} />
+                          <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-md py-1 z-50 animate-fadeIn">
+                            {menuItems.map((item, idx) => {
+                              const IconComponent = item.icon;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => {
+                                    setIsOverflowOpen(false);
+                                    item.onClick();
+                                  }}
+                                  className={`w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors ${
+                                    idx < menuItems.length - 1 ? 'border-b border-border/50' : ''
+                                  }`}
+                                >
+                                  <IconComponent className="w-4 h-4 text-muted-foreground" />
+                                  <span>{item.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </>
                       )}
-                      <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          handleShareDocument();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                      >
-                        <Share2 className="w-4 h-4 text-muted-foreground" />
-                        <span>Share Document</span>
-                      </button>
-                      {mongoConversationId && (
-                        <button
-                          onClick={() => {
-                            setIsOverflowOpen(false);
-                            handleSaveAsTemplate();
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                        >
-                          <Save className="w-4 h-4 text-muted-foreground" />
-                          <span>Save as Template</span>
-                        </button>
+
+                      {/* Mobile Dialog */}
+                      {isMobile && (
+                        <Dialog open={isOverflowOpen} onOpenChange={setIsOverflowOpen}>
+                          <DialogContent className="max-w-[320px] xs:max-w-[350px] sm:max-w-md rounded-lg p-5">
+                            <DialogHeader className="pb-2 border-b border-border text-left">
+                              <DialogTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">More Actions</DialogTitle>
+                              <DialogDescription className="text-xs text-muted-foreground">
+                                Select an action to perform on this document.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-1.5 mt-2 overflow-y-auto max-h-[60vh] pr-1">
+                              {menuItems.map((item) => {
+                                const IconComponent = item.icon;
+                                return (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => {
+                                      setIsOverflowOpen(false);
+                                      item.onClick();
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm hover:bg-muted text-foreground flex items-center gap-3 cursor-pointer transition-colors rounded-lg border border-border/40 bg-card hover:border-primary/20 shadow-sm"
+                                  >
+                                    <IconComponent className="w-4 h-4 text-primary" />
+                                    <span className="font-medium text-xs sm:text-sm">{item.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       )}
-                      <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          setIsZenMode(true);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                      >
-                        <Maximize className="w-4 h-4 text-muted-foreground" />
-                        <span>Zen Mode</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          setIsSignatureModalOpen(true);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                      >
-                        <PenTool className="w-4 h-4 text-muted-foreground" />
-                        <span>Add Signature</span>
-                      </button>
-                       <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          handleDownloadPdf();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
-                      >
-                        <Download className="w-4 h-4 text-muted-foreground" />
-                        <span>Download PDF</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsOverflowOpen(false);
-                          handleDownloadDocx();
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <span>Download Word</span>
-                      </button>
-                    </div>
-                  </>
-                )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Save Version Button */}

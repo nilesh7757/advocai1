@@ -15,14 +15,14 @@ const AppSidebar = ({
 }) => {
   const sideClasses = side === 'left'
     ? {
-        sidebar: `left-0 border-r border-border h-full flex flex-col bg-card flex-shrink-0 z-40 transition-all duration-300 ease-out fixed md:relative top-[var(--navbar-height)] md:top-0 md:h-full`,
+        sidebar: `left-0 border-r border-border flex flex-col bg-card flex-shrink-0 z-40 transition-all duration-300 ease-out fixed md:relative top-[var(--navbar-height)] bottom-0 h-auto md:top-0 md:bottom-auto md:h-full`,
         open: `${widthClass} translate-x-0`,
         collapsed: collapsedRail
           ? `w-0 -translate-x-full md:w-16 md:translate-x-0`
           : `w-0 -translate-x-full md:w-0 md:-translate-x-full`,
       }
     : {
-        sidebar: `right-0 border-l border-border h-full flex flex-col bg-card flex-shrink-0 z-40 transition-all duration-300 ease-out fixed md:relative top-[var(--navbar-height)] md:top-0 md:h-full`,
+        sidebar: `right-0 border-l border-border flex flex-col bg-card flex-shrink-0 z-40 transition-all duration-300 ease-out fixed md:relative top-[var(--navbar-height)] bottom-0 h-auto md:top-0 md:bottom-auto md:h-full`,
         open: `${widthClass} translate-x-0`,
         collapsed: collapsedRail
           ? `w-0 translate-x-full md:w-16 md:translate-x-0`
