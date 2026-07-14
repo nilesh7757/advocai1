@@ -100,24 +100,24 @@ export default function Navbar() {
   }, [showProfileMenu]);
 
   const navLinks = [
-    { to: "/", label: "Home", icon: Home },
-    { to: "/document-analyser", label: "Document Analyzer", icon: FileText },
-    { to: "/document-creation", label: "Document Generator", icon: Sparkles },
-    { to: "/lawyer-connect", label: "Connect", icon: Users },
-    { to: "/my-documents", label: "My Documents", icon: FolderOpen },
-    { to: "/chat", label: "Chat", requiresAuth: true, icon: MessageSquare },
-    { to: "/about", label: "About", icon: Info },
+    { to: "/", label: "Home", title: "Home", icon: Home },
+    { to: "/document-analyser", label: "Analyzer", title: "Document Analyzer", icon: FileText },
+    { to: "/document-creation", label: "Generator", title: "Document Generator", icon: Sparkles },
+    { to: "/lawyer-connect", label: "Connect", title: "Connect with Lawyers", icon: Users },
+    { to: "/my-documents", label: "Documents", title: "My Documents", icon: FolderOpen },
+    { to: "/chat", label: "Chat", title: "Chat", requiresAuth: true, icon: MessageSquare },
+    { to: "/about", label: "About", title: "About AdvocAI", icon: Info },
   ];
 
   if (isAuthenticated && user?.role === 'lawyer') {
-    navLinks.push({ to: "/lawyer-dashboard", label: "Lawyer Dashboard", requiresAuth: true, icon: LayoutDashboard });
+    navLinks.push({ to: "/lawyer-dashboard", label: "Dashboard", title: "Lawyer Dashboard", requiresAuth: true, icon: LayoutDashboard });
   }
 
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)] transition-colors duration-200 ${isMenuOpen ? 'bg-background' : 'bg-background/90 backdrop-blur-sm'}`}>
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+      <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 h-full">
         <div className="flex items-center justify-between h-full">
-          <Link to="/" className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0 mr-6 lg:mr-8">
+          <Link to="/" className="text-2xl font-bold text-foreground flex items-center gap-2 group flex-shrink-0 mr-8 lg:mr-12">
             <svg 
               className="w-7 h-7 text-primary transition-transform duration-300 group-hover:scale-105" 
               viewBox="0 0 24 24" 
@@ -169,23 +169,26 @@ export default function Navbar() {
           </Link>
           
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1 xl:gap-1.5">
+          <div className="hidden md:flex items-center gap-0.5 xl:gap-1">
             {navLinks.map((link, index) => {
               const isActive = location.pathname === link.to;
               const showLink = !link.requiresAuth || isAuthenticated;
               if (!showLink) return null;
+              const Icon = link.icon;
               return (
                 <Link 
                   to={link.to} 
                   key={index} 
+                  title={link.title}
                   className={
-                    "min-w-[5rem] xl:min-w-[6rem] px-3 xl:px-4 py-1.5 text-xs xl:text-sm font-semibold rounded-lg transition-all duration-150 relative group text-center " +
+                    "px-2 xl:px-4 py-1.5 text-xs xl:text-sm font-semibold rounded-lg transition-all duration-150 relative group flex items-center gap-1.5 " +
                     (isActive
                       ? "bg-primary/10 text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted")
                   }
                 >
-                  {link.label}
+                  <Icon size={16} className="xl:hidden flex-shrink-0" />
+                  <span className="hidden xl:inline">{link.label}</span>
                   <span className={"absolute bottom-0 left-0 h-[2px] bg-primary transition-all duration-300 " + (isActive ? "w-full" : "w-0 group-hover:w-full")}></span>
                 </Link>
               );
@@ -193,7 +196,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Auth Section */}
-          <div className="hidden lg:flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
+          <div className="hidden md:flex items-center space-x-2 xl:space-x-3 flex-shrink-0">
             <Button
               onClick={toggleTheme}
               variant="ghost"
@@ -271,11 +274,11 @@ export default function Navbar() {
                 <Button 
                   onClick={logout} 
                   variant="outline" 
-                  size="sm"
-                  className="border-border hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 h-9 px-3 rounded-lg"
+                  size="icon"
+                  className="w-9 h-9 border-border hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 rounded-lg flex-shrink-0"
+                  title="Logout"
                 >
-                  <LogOut size={14} className="mr-2" />
-                  Logout
+                  <LogOut size={14} />
                 </Button>
               </>
             ) : (
@@ -288,7 +291,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile Menu Button & Theme Toggle */}
-          <div className="lg:hidden flex items-center space-x-2">
+          <div className="md:hidden flex items-center space-x-2">
             {isAuthenticated && (
               <div ref={notificationsRef} className="relative">
                 <Button
@@ -365,7 +368,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Backdrop */}
       <div 
-        className={`lg:hidden fixed top-[var(--navbar-height)] inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+        className={`md:hidden fixed top-[var(--navbar-height)] inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsMenuOpen(false)}
@@ -373,7 +376,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Sidebar Drawer */}
       <div 
-        className={`lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform overflow-hidden ${
+        className={`md:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out transform overflow-hidden ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -488,6 +491,7 @@ export default function Navbar() {
               <Link 
                 to={link.to} 
                 key={index} 
+                title={link.title}
                 className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-150 border border-transparent ${
                   isActive 
                     ? 'bg-primary/10 border-primary/10 text-foreground font-semibold' 
