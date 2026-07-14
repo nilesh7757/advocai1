@@ -158,7 +158,7 @@ const DocumentCreation = () => {
     },
     editorProps: {
       attributes: {
-        class: 'markdown-preview p-8 bg-card/60 border border-border/10 rounded-b-2xl backdrop-blur-xl text-foreground overflow-hidden',
+        class: 'markdown-preview p-8 bg-background border border-border rounded-b-xl text-foreground overflow-hidden',
       },
     },
   });
@@ -477,21 +477,17 @@ const DocumentCreation = () => {
 
   // Initial view when no document
   if (!hasDocument) {
+    const hasMessages = messages.length > 0;
     return (
       <div className="flex relative h-screen bg-background overflow-hidden">
-        <div className="fixed inset-0 opacity-30 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-1000"></div>
-        </div>
-
         <div className="w-full relative z-10 flex flex-col h-screen overflow-hidden">
           {/* Big Navbar */}
-          <div className="px-8 py-6 bg-gradient-to-r from-card/80 to-card/80 backdrop-blur-xl border-b border-border/10 flex-shrink-0">
+          <div className="px-8 py-6 bg-card border-b border-border flex-shrink-0">
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-gradient-to-r from-primary to-secondary rounded-xl shadow-lg">
-                    <FileText className="w-8 h-8 text-foreground" />
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20">
+                    <FileText className="w-8 h-8" />
                   </div>
                   <h1 className="text-3xl font-bold text-foreground">Legal Document Assistant</h1>
                 </div>
@@ -505,12 +501,12 @@ const DocumentCreation = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter your document title..."
-                    className="pl-12 bg-input border-border/10 text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12 text-lg backdrop-blur-sm"
+                    className="pl-12 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12 text-lg"
                   />
                 </div>
                 <Button
                   onClick={handleSaveConversation}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-foreground px-8 rounded-xl shadow-lg shadow-green-500/30 transition-all hover:scale-105 h-12 whitespace-nowrap"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 rounded-xl shadow-sm transition-all hover:scale-[1.02] h-12 whitespace-nowrap cursor-pointer"
                 >
                   <Save className="w-5 h-5 mr-2" />
                   <span className="font-semibold">Create Document</span>
@@ -520,12 +516,12 @@ const DocumentCreation = () => {
           </div>
 
           {/* Chat Interface */}
-          <div className="flex-1 p-8 flex items-center justify-center overflow-hidden">
-            <Card className="w-full bg-gradient-to-br from-card/60 to-card/60 backdrop-blur-xl border border-border/10 shadow-2xl rounded-2xl overflow-hidden h-full flex flex-col">
-              <CardHeader className="pb-6 bg-gradient-to-r from-primary/10 to-secondary/10 border-b border-border/10 flex-shrink-0">
+          <div className="flex-1 p-6 lg:p-8 flex items-center justify-center overflow-hidden">
+            <Card className="w-full max-w-4xl bg-card border border-border shadow-sm rounded-xl overflow-hidden min-h-[450px] max-h-[600px] flex flex-col">
+              <CardHeader className="pb-6 bg-muted/30 border-b border-border flex-shrink-0">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-r from-primary to-secondary rounded-2xl shadow-lg">
-                    <MessageCircle className="w-6 h-6 text-foreground" />
+                  <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                    <MessageCircle className="w-6 h-6" />
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-bold text-foreground">AI Assistant</CardTitle>
@@ -534,41 +530,72 @@ const DocumentCreation = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-8 flex-1 flex flex-col overflow-hidden">
-                <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
-                  {messages.filter(msg => msg.type !== 'document_context').map((msg, index) => (
-                    <div key={index} className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
-                      {msg.sender === 'bot' && (
-                        <div className="w-6 h-6 flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                          <Bot className="w-3 h-3 text-foreground" />
-                        </div>
-                      )}
-                      <div className={`px-3 py-2 rounded-lg max-w-xs text-xs leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-primary text-foreground'
-                          : 'bg-card text-foreground border border-border/10'
-                      }`}>
-                        <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>
+                <div ref={chatContainerRef} className="flex-grow flex flex-col overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
+                  {!hasMessages && !isGenerating ? (
+                    <div className="flex-grow flex flex-col items-center justify-center text-center space-y-6 max-w-md mx-auto my-auto py-6">
+                      <div className="p-4 bg-primary/10 rounded-full text-primary border border-primary/20">
+                        <PenTool className="w-10 h-10" />
                       </div>
-                      {msg.sender === 'user' && (
-                        <div className="w-6 h-6 flex-shrink-0 rounded-full bg-muted flex items-center justify-center">
-                          <User className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {isGenerating && (
-                    <div className="flex gap-2">
-                      <div className="w-6 h-6 flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                        <Bot className="w-3 h-3 text-foreground animate-pulse" />
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-foreground">Draft with AdvocAI</h3>
+                        <p className="text-sm text-muted-foreground leading-normal">
+                          Describe the legal document you want to create, or click one of the templates below to prefill the prompt.
+                        </p>
                       </div>
-                      <div className="px-3 py-2 rounded-lg bg-card border border-border/10">
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
+                      <div className="flex flex-wrap gap-2 justify-center pt-2">
+                        {[
+                          "Draft a standard NDA",
+                          "Create a residential rental agreement",
+                          "Generate a freelance software contract"
+                        ].map((prompt) => (
+                          <button
+                            key={prompt}
+                            onClick={() => setChatMessage(prompt)}
+                            className="px-3.5 py-1.5 bg-muted hover:bg-primary/10 hover:text-primary border border-border hover:border-primary/20 rounded-full text-xs font-medium transition-all cursor-pointer"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      {messages.filter(msg => msg.type !== 'document_context').map((msg, index) => (
+                        <div key={index} className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
+                          {msg.sender === 'bot' && (
+                            <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+                              <Bot className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                          <div className={`px-4 py-2.5 rounded-xl max-w-xs text-xs leading-relaxed ${
+                            msg.sender === 'user'
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-muted text-foreground border border-border'
+                          }`}>
+                            <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>
+                          </div>
+                          {msg.sender === 'user' && (
+                            <div className="w-6 h-6 flex-shrink-0 rounded-full bg-muted flex items-center justify-center">
+                              <User className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {isGenerating && (
+                        <div className="flex gap-2">
+                          <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+                            <Bot className="w-3.5 h-3.5 animate-pulse" />
+                          </div>
+                          <div className="px-4 py-2.5 rounded-xl bg-muted border border-border">
+                            <div className="flex gap-1">
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -579,13 +606,13 @@ const DocumentCreation = () => {
                     onChange={(e) => setChatMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Describe the document you want to create..."
-                    className="flex-1 bg-input border-border/10 text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12 backdrop-blur-sm"
+                    className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12"
                     disabled={isGenerating}
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={isGenerating || !chatMessage.trim()}
-                    className="bg-gradient-to-r from-primary to-secondary hover:from-primary hover:to-secondary text-foreground px-8 rounded-xl shadow-lg shadow-primary/30 transition-all hover:scale-105 h-12"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 rounded-xl shadow-sm transition-all hover:scale-[1.02] h-12 cursor-pointer"
                   >
                     <Send className="w-5 h-5 mr-2" />
                     <span className="font-semibold">Send</span>
@@ -602,14 +629,9 @@ const DocumentCreation = () => {
   // Document generated view with 3-column layout
   return (
     <div className="flex relative h-full bg-background overflow-hidden overflow-x-hidden">
-      <div className="fixed inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
       {/* Left Sidebar - Chat */}
-     <div className={`${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-gradient- to-b from-card/95 to-card/95 backdrop-blur-xl border-r border-border/10 flex flex-col absolute z-20 overflow-hidden h-full`}> 
-        <div className="p-4 border-b border-border/10">
+      <div className={`${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-r border-border flex flex-col absolute z-20 overflow-hidden h-full`}> 
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-primary" />
@@ -622,16 +644,17 @@ const DocumentCreation = () => {
           {messages.filter(msg => msg.type !== 'document_context').map((msg, index) => (
             <div key={index} className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
               {msg.sender === 'bot' && (
-                <div className="w-6 h-6 flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                  <Bot className="w-3 h-3 text-foreground" />
+                <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+                  <Bot className="w-3.5 h-3.5" />
                 </div>
               )}
               <div className={`px-3 py-2 rounded-lg max-w-xs text-xs leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-primary text-foreground'
-                  : 'bg-card text-foreground border border-border/10'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted text-foreground border border-border'
               }`}>
-                                      <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>              </div>
+                <p style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{msg.text}</p>
+              </div>
               {msg.sender === 'user' && (
                 <div className="w-6 h-6 flex-shrink-0 rounded-full bg-muted flex items-center justify-center">
                   <User className="w-3 h-3 text-muted-foreground" />
@@ -641,10 +664,10 @@ const DocumentCreation = () => {
           ))}
           {isGenerating && (
             <div className="flex gap-2">
-              <div className="w-6 h-6 flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                <Bot className="w-3 h-3 text-foreground animate-pulse" />
+              <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+                <Bot className="w-3.5 h-3.5 animate-pulse" />
               </div>
-              <div className="px-3 py-2 rounded-lg bg-card border border-border/10">
+              <div className="px-3 py-2 rounded-lg bg-muted border border-border">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -655,7 +678,7 @@ const DocumentCreation = () => {
           )}
         </div>
 
-        <div className="p-4 border-t border-border/10 space-y-2">
+        <div className="p-4 border-t border-border space-y-2">
           <div className="flex gap-2">
             <Input
               type="text"
@@ -663,13 +686,13 @@ const DocumentCreation = () => {
               onChange={(e) => setChatMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask for changes..."
-              className="flex-1 bg-input border-border/10 text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10 text-sm backdrop-blur-sm"
+              className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10 text-sm"
               disabled={isGenerating}
             />
             <Button
               onClick={handleSendMessage}
               disabled={isGenerating || !chatMessage.trim()}
-              className="bg-primary hover:bg-primary/80 text-foreground rounded-lg h-10 w-10 p-0"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-10 w-10 p-0 cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -680,17 +703,17 @@ const DocumentCreation = () => {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col relative z-10 h-full overflow-hidden transition-all duration-300 ${sidebarOpen ? 'ml-80' : 'ml-0'}`}>
         {/* Top Bar */}
-        <div className="px-6 py-4 bg-gradient-to-r from-card/80 to-card/80 backdrop-blur-xl border-b border-border/10 flex items-center justify-between flex-shrink-0">
+        <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 lg:hidden"
+              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 lg:hidden cursor-pointer"
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 hidden lg:block"
+              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 hidden lg:block cursor-pointer"
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -703,7 +726,7 @@ const DocumentCreation = () => {
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') handleSaveTitle();
                   }}
-                  className="text-xl lg:text-2xl font-bold bg-input border-border/50 text-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10"
+                  className="text-xl lg:text-2xl font-bold bg-background border border-input text-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-10"
                 />
               ) : (
                 <h2 className="text-xl lg:text-2xl font-bold text-foreground truncate">{title || 'Your Document'}</h2>
@@ -711,15 +734,15 @@ const DocumentCreation = () => {
               {mongoConversationId && ( // Only show edit/save/cancel if document exists
                 isTitleEditing ? (
                   <>
-                    <Button size="icon" variant="ghost" onClick={handleSaveTitle} title="Save Title">
-                      <Save className="w-4 h-4 text-green-500" />
+                    <Button size="icon" variant="ghost" onClick={handleSaveTitle} title="Save Title" className="cursor-pointer">
+                      <Save className="w-4 h-4 text-primary" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={handleCancelTitleEdit} title="Cancel Edit">
+                    <Button size="icon" variant="ghost" onClick={handleCancelTitleEdit} title="Cancel Edit" className="cursor-pointer">
                       <XCircle className="w-4 h-4 text-muted-foreground" />
                     </Button>
                   </>
                 ) : (
-                  <Button size="icon" variant="ghost" onClick={handleEditTitleClick} title="Edit Title">
+                  <Button size="icon" variant="ghost" onClick={handleEditTitleClick} title="Edit Title" className="cursor-pointer">
                     <Edit className="w-4 h-4 text-muted-foreground" />
                   </Button>
                 )
@@ -732,7 +755,7 @@ const DocumentCreation = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsEditing(!isEditing)}
-              className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all text-xs lg:text-sm"
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
             >
               {isEditing ? (
                 <>
@@ -754,7 +777,7 @@ const DocumentCreation = () => {
                   setIsVersionsSidebarOpen(!isVersionsSidebarOpen);
                   setCommentsSidebarOpen(false);
                 }}
-                className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all text-xs lg:text-sm"
+                className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
               >
                 <History className="w-4 h-4 mr-1 lg:mr-2" />
                 <span className="hidden lg:inline">Versions</span>
@@ -764,7 +787,7 @@ const DocumentCreation = () => {
               variant="outline"
               size="sm"
               onClick={toggleFullScreen}
-              className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all text-xs lg:text-sm"
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
               title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
             >
               <Maximize className="w-4 h-4 mr-1 lg:mr-2" />
@@ -774,7 +797,7 @@ const DocumentCreation = () => {
               variant="outline"
               size="sm"
               onClick={handleShareDocument}
-              className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all text-xs lg:text-sm"
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
               title="Share Document"
             >
               <Share2 className="w-4 h-4 mr-1 lg:mr-2" />
@@ -788,7 +811,7 @@ const DocumentCreation = () => {
                   setCommentsSidebarOpen(!commentsSidebarOpen);
                   setIsVersionsSidebarOpen(false);
                 }}
-                className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all text-xs lg:text-sm"
+                className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
                 title="View Comments"
               >
                 <MessageCircle className="w-4 h-4 mr-1 lg:mr-2" />
@@ -799,42 +822,42 @@ const DocumentCreation = () => {
         </div>
 
         {/* Document Area */}
-        <div className="flex-1 overflow-hidden flex flex-col p-6 bg-card/80 rounded-xl shadow-inner">
+        <div className="flex-1 overflow-hidden flex flex-col p-6 bg-card border border-border rounded-xl shadow-sm">
           {isEditing ? (
-            <div className="flex-1 border border-border/10 rounded-t-xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="flex-1 border border-border rounded-t-xl overflow-hidden flex flex-col">
               <MenuBar editor={editor} />
-              <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-card/60 p-8 markdown-preview text-foreground">
+              <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-background p-8 markdown-preview text-foreground">
                 <EditorContent editor={editor} />
               </div>
             </div>
           ) : (
-            <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-card/60 border border-border/10 rounded-xl p-8 markdown-preview shadow-2xl text-foreground">
+            <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-background border border-border rounded-xl p-8 markdown-preview text-foreground">
                 {console.log("Previewing finalDocument:", finalDocument)}
                 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(finalDocument) }} />
               </div>
           )}
 
           {/* Action Buttons at Bottom */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 pt-6 pb-6 border-t border-border/10 bg-card/80 rounded-b-xl">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsSignatureModalOpen(true)} // Open SignatureModal
-              className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground rounded-lg backdrop-blur-sm transition-all"
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
             >
               <PenTool className="w-4 h-4 mr-2" />
               Add Signature
             </Button>
             <Button
               onClick={handleDownloadPdf}
-              className="bg-gradient-to-r from-accent to-accent text-foreground rounded-lg shadow-lg shadow-accent/30 transition-all"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all cursor-pointer"
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
             </Button>
             <Button
               onClick={handleSaveConversation}
-              className="bg-gradient-to-r from-primary to-secondary text-foreground rounded-lg shadow-lg shadow-primary/30 transition-all"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all cursor-pointer"
             >
               <Save className="w-4 h-4 mr-2" />
               Save Version
@@ -846,17 +869,17 @@ const DocumentCreation = () => {
       </div>
 
       {/* Right Sidebar - Comments */}
-      <div className={`${commentsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-gradient-to-b from-card/95 to-card/95 backdrop-blur-xl border-l border-border/10 flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
+      <div className={`${commentsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-l border-border flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
         {commentsSidebarOpen && mongoConversationId && (
           <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border/10 flex items-center justify-between">
+            <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-primary" />
                 <span className="text-foreground font-semibold text-sm">Comments</span>
               </div>
               <button
                 onClick={() => setCommentsSidebarOpen(false)}
-                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -869,7 +892,7 @@ const DocumentCreation = () => {
       </div>
 
       {/* Right Sidebar - Versions */}
-      <div className={`${isVersionsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-gradient-to-b from-card/95 to-card/95 backdrop-blur-xl border-l border-border/10 flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
+      <div className={`${isVersionsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-l border-border flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
         <VersionsSidebar
           conversationId={mongoConversationId}
           onSelectVersion={handleSelectVersion}

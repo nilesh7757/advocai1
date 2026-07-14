@@ -689,9 +689,9 @@ def merge_llm_and_heuristic_risks(
     # Final sort by priority
     merged.sort(
         key=lambda x: (
-            x.get('confidence', 0),
-            x.get('risk_score', 0),
-            x.get('weight', 0)
+            x.get('confidence') or 0,
+            x.get('risk_score') or 0,
+            x.get('weight') or 0
         ),
         reverse=True
     )

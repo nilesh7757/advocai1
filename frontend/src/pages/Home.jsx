@@ -10,12 +10,59 @@ import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 function ProductPreviewCard() {
   return (
-    <div className="relative w-full max-w-lg mx-auto overflow-hidden rounded-2xl border border-border shadow-md shadow-primary/5 animate-fade-in-up">
-      <img 
-        src="/legal_assistant_hero.jpg" 
-        alt="AdvocAI Assistant Mockup" 
-        className="w-full h-auto object-cover" 
-      />
+    <div className="relative w-full max-w-lg mx-auto bg-card rounded-2xl border border-border shadow-lg overflow-hidden animate-fade-in-up">
+      {/* Top bar */}
+      <div className="flex items-center justify-between bg-muted/50 border-b border-border px-4 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground select-none">
+          advocai.net/document/analyzer
+        </span>
+        <div className="w-10" />
+      </div>
+      
+      {/* Body */}
+      <div className="p-6 space-y-4">
+        {/* Placeholder lines */}
+        <div className="space-y-2">
+          <div className="h-3 bg-muted rounded w-[90%]"></div>
+          <div className="h-3 bg-muted rounded w-[75%]"></div>
+          <div className="h-3 bg-muted rounded w-[60%]"></div>
+        </div>
+
+        {/* Highlighted Risky Clause Block */}
+        <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-3 my-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono text-muted-foreground tracking-wider uppercase">
+              SECTION 4.2: INDEMNIFICATION
+            </span>
+            <span className="text-[10px] font-semibold text-destructive flex items-center gap-1">
+              ⚠ Risk Detected
+            </span>
+          </div>
+          <p className="text-xs text-foreground font-serif leading-relaxed">
+            The Contractor agrees to indemnify and hold harmless the Client from and against any and all claims, liabilities, and expenses without limitation of liability.
+          </p>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/20">
+            <span className="text-destructive text-[10px] font-semibold">
+              AI Risk Score: High Risk
+            </span>
+            <span className="text-primary text-[10px] font-semibold">
+              Suggested Revision Available
+            </span>
+          </div>
+        </div>
+
+        {/* Placeholder lines below */}
+        <div className="space-y-2">
+          <div className="h-3 bg-muted rounded w-[85%]"></div>
+          <div className="h-3 bg-muted rounded w-[70%]"></div>
+          <div className="h-3 bg-muted rounded w-[55%]"></div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -21,6 +21,10 @@ import {
   BookOpen,
   Maximize2,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -82,6 +86,10 @@ const DocumentAnalyzer = () => {
   const [dragActive, setDragActive] = useState(false);
   const [isSummaryCopied, setIsSummaryCopied] = useState(false); // New state for copy status
   const [expandedSection, setExpandedSection] = useState(null); // Modal state: 'preview', 'analysis', 'chat', or null
+  const [severityFilter, setSeverityFilter] = useState('All'); // Severity filter: 'All', 'Critical', 'High', 'Medium', 'Low'
+  const [activeClauseIndex, setActiveClauseIndex] = useState(null); // Clicked highlighted clause index
+  const [showFullSummary, setShowFullSummary] = useState(false); // Collapsible top bar summary toggle
+  const [chatOpen, setChatOpen] = useState(true); // Collapsible chat drawer
 
 
   const resetForNewDocument = () => {
@@ -96,6 +104,10 @@ const DocumentAnalyzer = () => {
     setSessionId(null);
     setChatHistory([]);
     setError('');
+    setSeverityFilter('All');
+    setActiveClauseIndex(null);
+    setShowFullSummary(false);
+    setChatOpen(false);
   };
 
   const handleDeleteSession = async (e, sessionIdToDelete) => {
@@ -346,6 +358,10 @@ const DocumentAnalyzer = () => {
     setSessionId(session.id ?? session._id ?? `session-${Date.now()}`);
     setSidebarOpen(false);
     setLoading(true);
+    setSeverityFilter('All');
+    setActiveClauseIndex(null);
+    setShowFullSummary(false);
+    setChatOpen(false);
     try {
       const data = await getChatHistoryApi(session.id ?? session._id ?? session.sessionId);
       const sessionInfo = data?.session ?? data ?? {};
@@ -402,1027 +418,823 @@ const DocumentAnalyzer = () => {
 
   const hasAnalysis = Boolean(summary || highlightedPreview || highRiskClauses.length);
 
-  // Modal component for expanded sections
-  const ExpandedModal = ({ section, onClose, children, title }) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-20">
-      <div className="bg-card/95 backdrop-blur-xl rounded-2xl border border-border/50 w-full max-w-6xl max-h-[85vh] flex flex-col shadow-2xl">
-        <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-xl font-semibold text-foreground">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6 text-muted-foreground" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          {children}
-        </div>
+  // Severity filter counts
+  const allCount = highRiskClauses.length;
+  const criticalCount = highRiskClauses.filter(c => getRiskDisplay(c).level === 'Critical').length;
+  const highCount = highRiskClauses.filter(c => getRiskDisplay(c).level === 'High').length;
+  const mediumCount = highRiskClauses.filter(c => getRiskDisplay(c).level === 'Medium').length;
+  const lowCount = highRiskClauses.filter(c => getRiskDisplay(c).level === 'Low').length;
+
+  // Filtered high-risk clauses based on severity chip selection
+  const filteredRiskClauses = highRiskClauses.filter(clause => {
+    if (severityFilter === 'All') return true;
+    const { level } = getRiskDisplay(clause);
+    return level.toLowerCase() === severityFilter.toLowerCase();
+  });
+
+  // Client-side PDF printable view layout builder
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Legal Analysis Report - AdvocAI</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1c1c24; line-height: 1.6; }
+            h1 { font-size: 24px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; font-weight: 700; }
+            h2 { font-size: 18px; margin-top: 30px; color: #27272a; border-bottom: 1px solid #e4e4e7; padding-bottom: 5px; }
+            .summary { background: #f4f4f5; padding: 20px; border-radius: 8px; font-size: 14px; margin-bottom: 25px; }
+            .clause-card { border: 1px solid #e4e4e7; border-left: 4px solid #ef4444; padding: 15px; margin-bottom: 15px; border-radius: 6px; }
+            .clause-title { font-weight: bold; font-size: 12px; text-transform: uppercase; color: #71717a; }
+            .clause-text { font-style: italic; margin: 10px 0; font-size: 14px; color: #3f3f46; background: #fafafa; padding: 10px; border-radius: 4px; }
+            .clause-rationale { font-size: 13px; color: #52525b; margin-top: 10px; }
+            .clause-mitigation { background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 13px; color: #1e3a8a; }
+          </style>
+        </head>
+        <body>
+          <h1>AdvocAI Legal Analysis Report</h1>
+          <p><strong>Document Title:</strong> ${uploadedFile?.name || 'Document Analysis'}</p>
+          <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
+          
+          <h2>Executive Summary</h2>
+          <div class="summary">${summary || 'No summary available.'}</div>
+          
+          <h2>Flagged High-Risk Clauses (${highRiskClauses.length})</h2>
+          ${highRiskClauses.length > 0 ? highRiskClauses.map((clause, idx) => {
+            const { level } = getRiskDisplay(clause);
+            const text = clause?.clause_text || clause?.clauseText || '';
+            const rationale = clause?.rationale || clause?.reason || '';
+            const mitigation = getMitigation(clause);
+            const replacement = getReplacementClause(clause);
+            return `
+              <div class="clause-card" style="border-left-color: ${level === 'Critical' || level === 'High' ? '#ef4444' : level === 'Medium' ? '#f97316' : '#3b82f6'}">
+                <div class="clause-title">Clause ${idx + 1} — Risk Level: ${level}</div>
+                ${text ? `<div class="clause-text">"${text}"</div>` : ''}
+                ${rationale ? `<div class="clause-rationale"><strong>Rationale:</strong> ${rationale}</div>` : ''}
+                ${mitigation ? `<div class="clause-mitigation"><strong>Suggested Change:</strong> ${mitigation}</div>` : ''}
+                ${replacement ? `<div class="clause-mitigation" style="background:#f0fdf4; border-color:#bbf7d0; color:#14532d;"><strong>Alternate Clause:</strong> ${replacement}</div>` : ''}
+              </div>
+            `;
+          }).join('') : '<p>No high-risk clauses flagged.</p>'}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  // Scroll to targeted highlight segment inside document viewer
+  const scrollToHighlight = (index) => {
+    setActiveClauseIndex(index);
+    const element = document.getElementById(`highlight-mark-${index}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.remove('animate-pulse');
+      void element.offsetWidth; // trigger reflow to restart animation
+      element.classList.add('animate-pulse');
+      setTimeout(() => {
+        element.classList.remove('animate-pulse');
+      }, 1800);
+    }
+  };
+
+  // Render plaintext with highlights mapped to click/scroll triggers
+  const renderHighlightedText = () => {
+    if (!previewText) {
+      return <p className="text-muted-foreground italic text-center py-12">No document content loaded.</p>;
+    }
+
+    const clauseMatches = [];
+    filteredRiskClauses.forEach((clause, index) => {
+      const clauseText = clause?.clause_text || clause?.clauseText || '';
+      if (!clauseText) return;
+      
+      let startIdx = previewText.indexOf(clauseText);
+      while (startIdx !== -1) {
+        clauseMatches.push({
+          start: startIdx,
+          end: startIdx + clauseText.length,
+          clause,
+          originalIndex: index
+        });
+        startIdx = previewText.indexOf(clauseText, startIdx + 1);
+      }
+    });
+
+    clauseMatches.sort((a, b) => a.start - b.start);
+
+    // Overlap resolution
+    const nonOverlappingMatches = [];
+    let lastEnd = 0;
+    for (const match of clauseMatches) {
+      if (match.start >= lastEnd) {
+        nonOverlappingMatches.push(match);
+        lastEnd = match.end;
+      }
+    }
+
+    const nodes = [];
+    let currentPos = 0;
+    
+    nonOverlappingMatches.forEach((match, idx) => {
+      if (match.start > currentPos) {
+        nodes.push(
+          <span key={`text-${idx}`}>
+            {previewText.substring(currentPos, match.start)}
+          </span>
+        );
+      }
+
+      const { level } = getRiskDisplay(match.clause);
+      const isSelected = activeClauseIndex === match.originalIndex;
+      
+      let highlightBg = 'bg-yellow-500/15 border-yellow-500/40 hover:bg-yellow-500/25 text-foreground';
+      if (level === 'Critical' || level === 'High') {
+        highlightBg = 'bg-destructive/15 border-destructive/40 hover:bg-destructive/25 text-foreground';
+      } else if (level === 'Medium') {
+        highlightBg = 'bg-orange-500/15 border-orange-500/40 hover:bg-orange-500/25 text-foreground';
+      }
+
+      nodes.push(
+        <span
+          key={`highlight-${idx}`}
+          id={`highlight-mark-${match.originalIndex}`}
+          onClick={() => {
+            setActiveClauseIndex(match.originalIndex);
+            const element = document.getElementById(`annotation-card-${match.originalIndex}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }}
+          className={`cursor-pointer border-b-2 px-1 py-0.5 rounded transition-all duration-200 inline ${highlightBg} ${
+            isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+          }`}
+          title={`Click to view annotation: ${level} Risk`}
+        >
+          {previewText.substring(match.start, match.end)}
+        </span>
+      );
+      
+      currentPos = match.end;
+    });
+
+    if (currentPos < previewText.length) {
+      nodes.push(
+        <span key="text-end">
+          {previewText.substring(currentPos)}
+        </span>
+      );
+    }
+
+    return (
+      <div className="whitespace-pre-wrap font-serif text-base leading-relaxed text-foreground/90 tracking-wide max-w-[70ch] mx-auto p-4 select-text">
+        {nodes}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="flex h-[calc(100vh-var(--navbar-height))] bg-background overflow-hidden">
-      {/* Animated background effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-1/4 -right-48 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: '1s' }}
-        />
-      </div>
-
+    <div className="flex h-[calc(100vh-var(--navbar-height))] bg-background overflow-hidden relative">
       {/* Mobile Sidebar Backdrop */}
       <div 
-        className={`md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity duration-300 ${
+        className={`md:hidden fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 ${
           sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* Sidebar */}
-      <div className={`
-        fixed md:relative top-[var(--navbar-height)] md:top-0 bottom-0 left-0 z-40 md:z-10
-        h-[calc(100vh-var(--navbar-height))] md:h-full
-        transition-all duration-300 ease-out transform
-        ${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full md:translate-x-0 w-0 md:w-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto'}
-      `}>
-        <div className="bg-card md:bg-card/85 backdrop-blur-xl border-r border-border flex flex-col h-full w-80">
-          <div className="p-6 border-b border-border/50 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
+      {/* Left Sidebar - Collapsible History Sidebar */}
+      <div className={`flex flex-col bg-card border-r border-border transition-all duration-300 ease-out flex-shrink-0 h-full ${
+        sidebarOpen 
+          ? 'w-80 translate-x-0' 
+          : 'w-0 -translate-x-full md:w-16 md:translate-x-0'
+      } z-40 md:relative fixed top-[var(--navbar-height)] md:top-0 bottom-0 left-0`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-border flex items-center justify-between overflow-hidden flex-shrink-0 h-16">
+          {sidebarOpen ? (
+            <>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                  <History className="w-5 h-5 text-foreground" />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">History</h2>
+                <History className="w-5 h-5 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground truncate">Analysis History</h2>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
-                <X className="w-5 h-5 text-muted-foreground" />
+              <button 
+                onClick={() => setSidebarOpen(false)} 
+                className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                title="Collapse history"
+              >
+                <X className="w-4 h-4" />
               </button>
-            </div>
-            <p className="text-sm text-muted-foreground">Previous sessions</p>
-          </div>
+            </>
+          ) : (
+            <button 
+              onClick={() => setSidebarOpen(true)} 
+              className="p-2 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground mx-auto hidden md:block"
+              title="Expand history"
+            >
+              <History className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {loadingSessions ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            ) : sessions.length > 0 ? (
-              <div className="space-y-2">
-                {sessions.map((session) => {
-                  const isSelected = sessionId === (session.id ?? session._id);
-                  return (
-                    <div
-                      key={session.id ?? session._id}
-                      className="relative group w-full"
-                    >
+        {/* Sidebar Session List */}
+        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+          {loadingSessions ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : sessions.length > 0 ? (
+            <div className="space-y-1">
+              {sessions.map((session) => {
+                const isSelected = sessionId === (session.id ?? session._id);
+                return (
+                  <div
+                    key={session.id ?? session._id}
+                    className="relative group w-full"
+                  >
+                    {sidebarOpen ? (
                       <button
                         onClick={() => openSession(session)}
-                        className={`w-full text-left p-4 pr-10 rounded-xl border transition-all duration-200 ${
+                        className={`w-full text-left p-3 pr-10 rounded-lg border transition-all duration-200 cursor-pointer ${
                           isSelected
-                            ? 'bg-gradient-to-br from-primary/20 to-secondary/20 border-primary/50 shadow-lg shadow-primary/20'
-                            : 'bg-card/40 border-border/50 hover:bg-card/60 hover:border-border'
+                            ? 'bg-primary/10 border-primary/20 shadow-sm'
+                            : 'bg-transparent border-transparent hover:bg-muted hover:border-border'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2.5">
                           <FileText className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground font-medium line-clamp-2 mb-2">
+                            <p className="text-xs text-foreground font-medium line-clamp-2 mb-1">
                               {session.summary_preview || session.title || 'Document Analysis'}
                             </p>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                {formatDate(session.created_at || session.createdAt || session.date)}
-                              </span>
-                              {Number(session.message_count || session.messages_count || 0) > 0 && (
-                                <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                                  {session.message_count || session.messages_count}
-                                </span>
-                              )}
-                            </div>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDate(session.created_at || session.createdAt || session.date)}
+                            </span>
                           </div>
                         </div>
                       </button>
-                      
+                    ) : (
+                      <button
+                        onClick={() => openSession(session)}
+                        className={`w-10 h-10 rounded-lg mx-auto flex items-center justify-center transition-all cursor-pointer ${
+                          isSelected ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:bg-muted'
+                        }`}
+                        title={session.summary_preview || session.title || 'Document Analysis'}
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                    )}
+                    
+                    {sidebarOpen && (
                       <button
                         onClick={(e) => handleDeleteSession(e, session.id ?? session._id)}
-                        className="absolute right-3 top-3 p-1.5 rounded-lg bg-card/80 border border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-card border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
                         title="Delete Session"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="p-4 bg-card/40 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <History className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground text-sm mb-1">No previous sessions</p>
-                <p className="text-muted-foreground text-xs">Upload a document to start</p>
-              </div>
-            )}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : sidebarOpen ? (
+            <div className="text-center py-12 px-4">
+              <History className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">No previous sessions</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Sidebar New Session Button */}
+        <div className="p-3 border-t border-border flex items-center justify-center flex-shrink-0">
+          {sidebarOpen ? (
+            <button
+              onClick={resetForNewDocument}
+              className="w-full py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-medium shadow-sm transition-all duration-200 text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Analysis</span>
+            </button>
+          ) : (
+            <button
+              onClick={resetForNewDocument}
+              className="w-10 h-10 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center shadow-sm transition-all duration-200 cursor-pointer"
+              title="New Analysis"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Sidebar toggle button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`fixed left-0 top-1/2 -translate-y-1/2 p-3 bg-gradient-to-r from-primary to-secondary text-foreground rounded-r-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 z-30 ${
-          sidebarOpen ? 'translate-x-80 md:translate-x-0 opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto' : 'translate-x-0 opacity-100'
-        }`}
-      >
-        <History className="w-5 h-5 animate-pulse" />
-      </button>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="max-w-7xl mx-auto p-6 lg:p-12 flex-1 flex flex-col w-full h-full">
-          {/* Upload / Summary header */}
-          {!hasAnalysis ? (
-            <div className="mb-8">
-              <div
-                className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 ${
-                  dragActive ? 'border-primary bg-primary/10 scale-[1.02]' : uploadedFile ? 'border-accent/50 bg-card/40' : 'border-border/20 hover:border-border hover:bg-card/30'
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => !uploading && fileInputRef.current && fileInputRef.current.click()}
+      {/* Middle Panel - Document Reading & Analysis Workspace */}
+      <div className="flex-1 flex flex-col h-full bg-background min-w-0 relative">
+        {!hasAnalysis ? (
+          // Center Empty State / Upload Container
+          <div className="w-full max-w-2xl mx-auto p-6 lg:p-12 flex-grow flex flex-col items-center justify-center space-y-8 animate-fade-in-up relative">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="absolute top-4 left-4 z-40 p-2 bg-card border border-border rounded-lg text-muted-foreground hover:text-foreground md:hidden cursor-pointer shadow-sm animate-fade-in"
+                title="Open history"
               >
-                <input
-                  id="file-upload"
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={uploading}
-                />
+                <History className="w-5 h-5" />
+              </button>
+            )}
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold text-foreground">AI Document Analyzer</h1>
+              <p className="text-sm text-muted-foreground">Upload legal documents for instant review, semantic analysis, and risk detection</p>
+            </div>
 
-                <div className="px-6 pts-8 sm:p-10 lg:p-12 text-center cursor-pointer">
-                  {uploading ? (
-                    <div className="space-y-4">
-                      <div className="relative w-16 h-16 mx-auto">
-                        <Loader2 className="w-16 h-16 text-primary animate-spin" />
-                        <Sparkles className="w-6 h-6 text-secondary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium text-foreground mb-1">Analyzing your document...</p>
-                        <p className="text-sm text-muted-foreground">This may take a moment</p>
-                      </div>
-                    </div>
-                  ) : uploadedFile ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-accent/20 rounded-full w-20 h-20 mx-auto flex items-center justify-center border border-accent/30">
-                        <FileText className="w-10 h-10 text-accent" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium text-foreground mb-1">{uploadedFile.name}</p>
-                        <p className="text-sm text-accent">✓ Ready for analysis</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="relative w-20 h-20 mx-auto">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-2xl opacity-20 blur-xl" />
-                        <div className="relative p-4 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl border border-primary/30">
-                          <Upload className="w-12 h-12 text-primary" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium text-foreground mb-2">Drop your document here</p>
-                        <p className="text-sm text-muted-foreground mb-4">or click to browse your files</p>
-                        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                          <span>Supports:</span>
-                          <span className="px-2 py-1 bg-card/50 rounded">PDF</span>
-                          <span className="px-2 py-1 bg-card/50 rounded">DOCX</span>
-                          <span className="px-2 py-1 bg-card/50 rounded">TXT</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            <div
+              className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 w-full cursor-pointer ${
+                dragActive ? 'border-primary bg-primary/10 scale-[1.02]' : uploadedFile ? 'border-primary/50 bg-card' : 'border-border hover:border-primary/50 hover:bg-muted/50 bg-card'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => !uploading && fileInputRef.current && fileInputRef.current.click()}
+            >
+              <input
+                id="file-upload"
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={uploading}
+              />
 
-                {error && (
-                  <div className="mt-4 p-4 bg-destructive/10 border border-destructive/30 rounded-xl">
-                    <p className="text-destructive text-sm">{error}</p>
+              <div className="p-8 sm:p-10 lg:p-12 text-center select-none">
+                {uploading ? (
+                  <div className="space-y-4">
+                    <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto" />
+                    <div>
+                      <p className="text-base font-semibold text-foreground mb-1">Analyzing document terms...</p>
+                      <p className="text-xs text-muted-foreground">Extracting clauses and measuring liabilities</p>
+                    </div>
+                  </div>
+                ) : uploadedFile ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/10 text-primary rounded-full w-16 h-16 mx-auto flex items-center justify-center border border-primary/20">
+                      <FileText className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <p className="text-base font-medium text-foreground mb-1">{uploadedFile.name}</p>
+                      <p className="text-xs text-primary font-semibold">✓ Ready for analysis</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/10 text-primary rounded-2xl border border-primary/20 flex items-center justify-center w-16 h-16 mx-auto">
+                      <Upload className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-foreground mb-1">Drag and drop your document here</p>
+                      <p className="text-xs text-muted-foreground mb-4">or click to browse your files</p>
+                      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                        <span>Supports:</span>
+                        <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono">PDF</span>
+                        <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono">DOCX</span>
+                        <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono">TXT</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="mb-8 flex items-center justify-between">
-              <div className="text-left">
-                <h2 className="text-xl font-semibold text-foreground">Summary & Q&A</h2>
-                <p className="text-sm text-muted-foreground">Your analysis is ready. Ask follow-up questions or start a new summary.</p>
-              </div>
-              <button
-                onClick={resetForNewDocument}
-                className="px-4 py-2 bg-gradient-to-r from-primary to-secondary text-foreground rounded-xl font-medium hover:shadow-lg hover:shadow-primary/30 transition-all duration-200"
-              >
-                Summarize New Document
-              </button>
 
-            </div>
-          )}
-
-          {/* Analysis & Chat Grid */}
-          {hasAnalysis && (
-            <div className="grid lg:grid-cols-3 gap-6 h-[60vh]">
-              {/* Left Column: Document Preview + Analysis */}
-              <div className="lg:col-span-2 flex flex-col gap-6 h-[60vh] overflow-y-auto custom-scrollbar">
-                {/* Document Preview */}
-                <div className="bg-card/40 backdrop-blur-xl rounded-2xl border border-border/50 overflow-hidden">
-                  <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                        <FileText className="w-5 h-5 text-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">Document Preview</h3>
-                        <p className="text-sm text-muted-foreground">Highlighted clauses mark elevated risk</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {highRiskClauses.length > 0 && (
-                        <span className="text-xs font-medium text-destructive bg-destructive/20 px-3 py-1 rounded-full">
-                          {highRiskClauses.length} flagged
-                        </span>
-                      )}
-                      <button
-                        onClick={() => setExpandedSection('preview')}
-                        className="p-2 hover:bg-primary/10 rounded-lg transition-colors group"
-                        title="Expand preview"
-                      >
-                        <Maximize2 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-6 max-h-96 overflow-y-auto custom-scrollbar">
-                    {highlightedPreview ? (
-                      <div
-                        className="text-sm leading-relaxed text-muted-foreground space-y-3"
-                        dangerouslySetInnerHTML={{ __html: highlightedPreview }}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {previewText || 'Preview not available for this document.'}
-                      </p>
-                    )}
-                  </div>
+              {error && (
+                <div className="m-4 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-center">
+                  <p className="text-destructive text-sm font-medium">{error}</p>
                 </div>
-
-                {/* Analysis Section */}
-                <div className="bg-card/40 backdrop-blur-xl rounded-2xl border border-border/50 overflow-hidden flex flex-col">
-                  <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                          <Bot className="w-5 h-5 text-foreground" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground">Analysis</h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleCopySummary}
-                          disabled={!summary && !highRiskClauses.length}
-                          className="px-3 py-1.5 bg-gradient-to-r from-primary to-secondary text-foreground rounded-lg font-medium hover:shadow-lg hover:shadow-primary/30 transition-all duration-200 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSummaryCopied ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              <span>Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              <span>Copy</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setExpandedSection('analysis')}
-                          className="p-2 hover:bg-primary/10 rounded-lg transition-colors group"
-                          title="Expand analysis"
-                        >
-                          <Maximize2 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">AI-generated insights</p>
-                  </div>
-                  <div className="p-6 overflow-y-auto custom-scrollbar max-h-[500px]">
-                    <div className="space-y-6">
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-foreground">Summary</h4>
-                          <button
-                            onClick={() => setShowDetailedSummary(!showDetailedSummary)}
-                            disabled={!comprehensiveSummary}
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gradient-to-r from-primary/20 to-secondary/20 text-primary rounded-lg hover:from-primary/30 hover:to-secondary/30 transition-all duration-200 font-medium border border-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {showDetailedSummary ? (
-                              <>
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span>Quick View</span>
-                              </>
-                            ) : (
-                              <>
-                                <BookOpen className="w-3.5 h-3.5" />
-                                <span>Detailed Analysis</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        
-                        {!showDetailedSummary ? (
-                          <div>
-                            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                              {summary || 'No summary available.'}
-                            </p>
-                            {comprehensiveSummary ? (
-                              <div className="mt-3 flex items-center gap-2 text-xs text-primary/70">
-                                <BookOpen className="w-3.5 h-3.5" />
-                                <span>Click "Detailed Analysis" for comprehensive breakdown</span>
-                              </div>
-                            ) : comprehensiveSummaryLoading ? (
-                              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground/60">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                <span>Generating detailed analysis...</span>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : comprehensiveSummary ? (
-                          <div className="space-y-4 text-sm">
-                            {/* Executive Summary */}
-                            {comprehensiveSummary.executive_summary && (
-                              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                                <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-                                  {comprehensiveSummary.executive_summary}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Parties */}
-                            {comprehensiveSummary.parties && comprehensiveSummary.parties.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                                  <Users className="w-4 h-4" />
-                                  Parties Involved
-                                </h5>
-                                <div className="space-y-2">
-                                  {comprehensiveSummary.parties.map((party, idx) => (
-                                    <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-2">
-                                      <div className="font-medium text-foreground">{party.name}</div>
-                                      <div className="text-xs text-primary">{party.role}</div>
-                                      {party.simple_explanation && (
-                                        <div className="text-xs text-muted-foreground mt-1">{party.simple_explanation}</div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Purpose */}
-                            {comprehensiveSummary.purpose && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2">Purpose</h5>
-                                <p className="text-muted-foreground">{comprehensiveSummary.purpose}</p>
-                              </div>
-                            )}
-
-                            {/* Key Obligations */}
-                            {comprehensiveSummary.key_obligations && Object.keys(comprehensiveSummary.key_obligations).length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2">Key Obligations</h5>
-                                <div className="space-y-2">
-                                  {Object.entries(comprehensiveSummary.key_obligations).map(([party, obligation], idx) => (
-                                    <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-2">
-                                      <div className="font-medium text-foreground text-xs">{party}</div>
-                                      <div className="text-xs text-muted-foreground mt-1">{obligation}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Financial Terms */}
-                            {comprehensiveSummary.financial_terms && comprehensiveSummary.financial_terms.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                                  <DollarSign className="w-4 h-4" />
-                                  Financial Terms
-                                </h5>
-                                <div className="space-y-2">
-                                  {comprehensiveSummary.financial_terms.map((term, idx) => (
-                                    <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-2">
-                                      <div className="flex justify-between items-start">
-                                        <div className="text-xs text-foreground">{term.item}</div>
-                                        <div className="text-xs font-semibold text-primary">{term.amount}</div>
-                                      </div>
-                                      {term.simple_explanation && (
-                                        <div className="text-xs text-muted-foreground mt-1">{term.simple_explanation}</div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Term & Termination */}
-                            {comprehensiveSummary.term_and_termination && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                                  <Calendar className="w-4 h-4" />
-                                  Term & Termination
-                                </h5>
-                                <div className="bg-card/50 border border-border/40 rounded-lg p-2 space-y-1 text-xs">
-                                  <div><span className="font-medium">Duration:</span> {comprehensiveSummary.term_and_termination.duration}</div>
-                                  {comprehensiveSummary.term_and_termination.renewal_terms && (
-                                    <div><span className="font-medium">Renewal:</span> {comprehensiveSummary.term_and_termination.renewal_terms}</div>
-                                  )}
-                                  {comprehensiveSummary.term_and_termination.termination_process && (
-                                    <div><span className="font-medium">How to Exit:</span> {comprehensiveSummary.term_and_termination.termination_process}</div>
-                                  )}
-                                  {comprehensiveSummary.term_and_termination.notice_period && (
-                                    <div><span className="font-medium">Notice:</span> {comprehensiveSummary.term_and_termination.notice_period}</div>
-                                  )}
-                                  {comprehensiveSummary.term_and_termination.simple_explanation && (
-                                    <div className="text-muted-foreground mt-2 pt-2 border-t border-border/40">
-                                      {comprehensiveSummary.term_and_termination.simple_explanation}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Important Deadlines */}
-                            {comprehensiveSummary.important_deadlines && comprehensiveSummary.important_deadlines.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                                  <Clock className="w-4 h-4" />
-                                  Important Deadlines
-                                </h5>
-                                <ul className="space-y-1 text-xs text-muted-foreground">
-                                  {comprehensiveSummary.important_deadlines.map((deadline, idx) => (
-                                    <li key={idx} className="flex items-start gap-2">
-                                      <span className="text-primary mt-0.5">•</span>
-                                      <span>{deadline}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Legal Terms Explained */}
-                            {comprehensiveSummary.legal_terms_explained && comprehensiveSummary.legal_terms_explained.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-                                  <BookOpen className="w-4 h-4" />
-                                  Legal Terms in Plain English
-                                </h5>
-                                <div className="space-y-2">
-                                  {comprehensiveSummary.legal_terms_explained.map((item, idx) => (
-                                    <div key={idx} className="bg-secondary/10 border border-secondary/20 rounded-lg p-2">
-                                      <div className="font-medium text-foreground text-xs">{item.term}</div>
-                                      <div className="text-xs text-muted-foreground mt-1">{item.meaning}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Compliance Requirements */}
-                            {comprehensiveSummary.compliance_requirements && comprehensiveSummary.compliance_requirements.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2">Compliance Requirements</h5>
-                                <ul className="space-y-1 text-xs text-muted-foreground">
-                                  {comprehensiveSummary.compliance_requirements.map((req, idx) => (
-                                    <li key={idx} className="flex items-start gap-2">
-                                      <span className="text-primary mt-0.5">•</span>
-                                      <span>{req}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Attachments */}
-                            {comprehensiveSummary.attachments_mentioned && comprehensiveSummary.attachments_mentioned.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-foreground mb-2">Attachments/Schedules</h5>
-                                <ul className="space-y-1 text-xs text-muted-foreground">
-                                  {comprehensiveSummary.attachments_mentioned.map((att, idx) => (
-                                    <li key={idx} className="flex items-start gap-2">
-                                      <span className="text-primary mt-0.5">•</span>
-                                      <span>{att}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-sm">No detailed summary available.</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground mb-2">High-Risk Clauses</h4>
-                        {highRiskClauses.length ? (
-                          <ul className="space-y-3">
-                            {highRiskClauses.map((clause, idx) => {
-                              const { score, level } = getRiskDisplay(clause);
-                              const text = clause?.clause_text || clause?.clauseText || '';
-                              const rationale = clause?.rationale || clause?.reason || '';
-                              const mitigation = getMitigation(clause);
-                              const replacement = getReplacementClause(clause);
-                              return (
-                                <li key={`risk-${idx}`} className="p-3 rounded-xl border border-border/40 bg-background/40">
-                                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-secondary mb-1">
-                                    <ShieldAlert className="w-4 h-4" />
-                                    <span>Risk: {level}{score ? ` • ${score}/5` : ''}</span>
-                                  </div>
-                                  {text && (
-                                    <p className="text-sm text-foreground leading-relaxed mb-1 whitespace-pre-wrap">{text}</p>
-                                  )}
-                                  {rationale && (
-                                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{rationale}</p>
-                                  )}
-                                  {mitigation && (
-                                    <div className="mt-2 flex items-start gap-2 text-xs bg-primary/10 border border-primary/30 rounded-lg p-2">
-                                      <Lightbulb className="w-4 h-4 mt-0.5 text-primary" />
-                                      <div className="text-muted-foreground whitespace-pre-wrap">
-                                        <span className="font-semibold text-primary">Suggested Change:</span> {mitigation}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {replacement && (
-                                    <div className="mt-2 flex items-start gap-2 text-xs bg-card/50 border border-border/40 rounded-lg p-2">
-                                      <FileText className="w-4 h-4 mt-0.5 text-secondary" />
-                                      <div className="text-muted-foreground whitespace-pre-wrap">
-                                        <span className="font-semibold text-foreground">Alternate Clause:</span> {replacement}
-                                      </div>
-                                    </div>
-                                  )}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            No high-risk clauses were flagged in the preview.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Questions/Chat Interface */}
-              <div className="lg:col-span-1 flex flex-col h-[60vh]">
-                <div className="bg-card/40 backdrop-blur-xl rounded-2xl border border-border/50 overflow-hidden flex flex-col h-full">
-                  <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                          <MessageCircle className="w-5 h-5 text-foreground" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground">Ask Questions</h3>
-                      </div>
-                      <button
-                        onClick={() => setExpandedSection('chat')}
-                        className="p-2 hover:bg-primary/10 rounded-lg transition-colors group"
-                        title="Expand chat"
-                      >
-                        <Maximize2 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Chat with AI about your document</p>
-                  </div>
-
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-6 pt-8 space-y-4 custom-scrollbar">
-                    {chatHistory.map((message) => (
-                      <div key={message.id} className={`flex items-start gap-3 ${message.sender === 'User' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                        {message.sender !== 'User' && (
-                          <div className="w-8 h-8 rounded-full bg-card flex items-center justify-center flex-shrink-0">
-                            <Bot className="w-5 h-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className={`max-w-[80%]`}>
-                          <div className={`rounded-2xl px-4 py-3 ${
-                            message.sender === 'User' ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/10' : 'bg-card text-foreground border border-border'
-                          }`}>
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
-                          </div>
-                        </div>
-                        {message.sender === 'User' && (
-                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                            <User className="w-4 h-4 text-primary-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {loading && (
-                      <div className="flex justify-start">
-                        <div className="bg-card/50 border border-border/50 px-4 py-3 rounded-2xl flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          <span className="text-sm text-muted-foreground">Thinking...</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Input */}
-                  <div className="p-6 border-t border-border/50 bg-card/30 flex-shrink-0">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Ask anything about your document..."
-                        disabled={!sessionId || loading}
-                        className="flex-1 px-4 py-3 bg-card/50 border border-border/50 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all min-w-0"
-                      />
-                      <button
-                        onClick={handleSendMessage}
-                        disabled={!sessionId || !chatMessage.trim() || loading}
-                        className="px-4 py-3 bg-gradient-to-r from-primary to-secondary text-foreground rounded-xl font-medium hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 flex-shrink-0"
-                      >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5" /><span className="hidden sm:inline">Send</span></>}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Expanded Modals */}
-      {expandedSection === 'preview' && (
-        <ExpandedModal
-          section="preview"
-          title="Document Preview"
-          onClose={() => setExpandedSection(null)}
-        >
-          {highlightedPreview ? (
-            <div
-              className="text-base leading-relaxed text-muted-foreground space-y-4"
-              dangerouslySetInnerHTML={{ __html: highlightedPreview }}
-            />
-          ) : (
-            <p className="text-base text-muted-foreground whitespace-pre-wrap">
-              {previewText || 'Preview not available for this document.'}
-            </p>
-          )}
-        </ExpandedModal>
-      )}
-
-      {expandedSection === 'analysis' && (
-        <ExpandedModal
-          section="analysis"
-          title="Document Analysis"
-          onClose={() => setExpandedSection(null)}
-        >
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-foreground">Summary</h4>
-                <button
-                  onClick={() => setShowDetailedSummary(!showDetailedSummary)}
-                  disabled={!comprehensiveSummary}
-                  className="flex items-center gap-2 text-sm px-4 py-2 bg-gradient-to-r from-primary/20 to-secondary/20 text-primary rounded-lg hover:from-primary/30 hover:to-secondary/30 transition-all duration-200 font-medium border border-primary/30 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {showDetailedSummary ? (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Quick View</span>
-                    </>
-                  ) : (
-                    <>
-                      <BookOpen className="w-4 h-4" />
-                      <span>Detailed Analysis</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              {!showDetailedSummary ? (
-                <div>
-                  <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                    {summary || 'No summary available.'}
-                  </p>
-                  {comprehensiveSummary && (
-                    <div className="mt-4 flex items-center gap-2 text-sm text-primary/70">
-                      <BookOpen className="w-4 h-4" />
-                      <span>Click "Detailed Analysis" for comprehensive breakdown</span>
-                    </div>
-                  )}
-                </div>
-              ) : comprehensiveSummary ? (
-                <div className="space-y-5 text-base">
-                  {/* Executive Summary */}
-                  {comprehensiveSummary.executive_summary && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                      <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-                        {comprehensiveSummary.executive_summary}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Parties */}
-                  {comprehensiveSummary.parties && comprehensiveSummary.parties.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-base">
-                        <Users className="w-5 h-5" />
-                        Parties Involved
-                      </h5>
-                      <div className="space-y-3">
-                        {comprehensiveSummary.parties.map((party, idx) => (
-                          <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-3">
-                            <div className="font-medium text-foreground text-base">{party.name}</div>
-                            <div className="text-sm text-primary">{party.role}</div>
-                            {party.simple_explanation && (
-                              <div className="text-sm text-muted-foreground mt-2">{party.simple_explanation}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Purpose */}
-                  {comprehensiveSummary.purpose && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-2 text-base">Purpose</h5>
-                      <p className="text-muted-foreground">{comprehensiveSummary.purpose}</p>
-                    </div>
-                  )}
-
-                  {/* Key Obligations */}
-                  {comprehensiveSummary.key_obligations && Object.keys(comprehensiveSummary.key_obligations).length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 text-base">Key Obligations</h5>
-                      <div className="space-y-3">
-                        {Object.entries(comprehensiveSummary.key_obligations).map(([party, obligation], idx) => (
-                          <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-3">
-                            <div className="font-medium text-foreground text-sm">{party}</div>
-                            <div className="text-sm text-muted-foreground mt-2">{obligation}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Financial Terms */}
-                  {comprehensiveSummary.financial_terms && comprehensiveSummary.financial_terms.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-base">
-                        <DollarSign className="w-5 h-5" />
-                        Financial Terms
-                      </h5>
-                      <div className="space-y-3">
-                        {comprehensiveSummary.financial_terms.map((term, idx) => (
-                          <div key={idx} className="bg-card/50 border border-border/40 rounded-lg p-3">
-                            <div className="flex justify-between items-start">
-                              <div className="text-sm text-foreground">{term.item}</div>
-                              <div className="text-sm font-semibold text-primary">{term.amount}</div>
-                            </div>
-                            {term.simple_explanation && (
-                              <div className="text-sm text-muted-foreground mt-2">{term.simple_explanation}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Term & Termination */}
-                  {comprehensiveSummary.term_and_termination && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-base">
-                        <Calendar className="w-5 h-5" />
-                        Term & Termination
-                      </h5>
-                      <div className="bg-card/50 border border-border/40 rounded-lg p-3 space-y-2 text-sm">
-                        <div><span className="font-medium">Duration:</span> {comprehensiveSummary.term_and_termination.duration}</div>
-                        {comprehensiveSummary.term_and_termination.renewal_terms && (
-                          <div><span className="font-medium">Renewal:</span> {comprehensiveSummary.term_and_termination.renewal_terms}</div>
-                        )}
-                        {comprehensiveSummary.term_and_termination.termination_process && (
-                          <div><span className="font-medium">How to Exit:</span> {comprehensiveSummary.term_and_termination.termination_process}</div>
-                        )}
-                        {comprehensiveSummary.term_and_termination.notice_period && (
-                          <div><span className="font-medium">Notice:</span> {comprehensiveSummary.term_and_termination.notice_period}</div>
-                        )}
-                        {comprehensiveSummary.term_and_termination.simple_explanation && (
-                          <div className="text-muted-foreground mt-3 pt-3 border-t border-border/40">
-                            {comprehensiveSummary.term_and_termination.simple_explanation}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Important Deadlines */}
-                  {comprehensiveSummary.important_deadlines && comprehensiveSummary.important_deadlines.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-base">
-                        <Clock className="w-5 h-5" />
-                        Important Deadlines
-                      </h5>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        {comprehensiveSummary.important_deadlines.map((deadline, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-primary mt-0.5">•</span>
-                            <span>{deadline}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Legal Terms Explained */}
-                  {comprehensiveSummary.legal_terms_explained && comprehensiveSummary.legal_terms_explained.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-base">
-                        <BookOpen className="w-5 h-5" />
-                        Legal Terms in Plain English
-                      </h5>
-                      <div className="space-y-3">
-                        {comprehensiveSummary.legal_terms_explained.map((item, idx) => (
-                          <div key={idx} className="bg-secondary/10 border border-secondary/20 rounded-lg p-3">
-                            <div className="font-medium text-foreground text-sm">{item.term}</div>
-                            <div className="text-sm text-muted-foreground mt-2">{item.meaning}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Compliance Requirements */}
-                  {comprehensiveSummary.compliance_requirements && comprehensiveSummary.compliance_requirements.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 text-base">Compliance Requirements</h5>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        {comprehensiveSummary.compliance_requirements.map((req, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-primary mt-0.5">•</span>
-                            <span>{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Attachments */}
-                  {comprehensiveSummary.attachments_mentioned && comprehensiveSummary.attachments_mentioned.length > 0 && (
-                    <div>
-                      <h5 className="font-semibold text-foreground mb-3 text-base">Attachments/Schedules</h5>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        {comprehensiveSummary.attachments_mentioned.map((att, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-primary mt-0.5">•</span>
-                            <span>{att}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-base">No detailed summary available.</p>
               )}
             </div>
 
-            <div>
-              <h4 className="text-lg font-semibold text-foreground mb-3">High-Risk Clauses</h4>
-              {highRiskClauses.length ? (
-                <ul className="space-y-4">
-                  {highRiskClauses.map((clause, idx) => {
+            {/* 3 supporting core feature calls */}
+            <div className="grid grid-cols-3 gap-6 w-full pt-4 border-t border-border">
+              <div className="text-center space-y-1">
+                <div className="text-primary font-semibold text-sm flex items-center justify-center gap-1 select-none">
+                  <span>✓</span> Instant Analysis
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-normal">Parse clauses and terms in seconds</p>
+              </div>
+              <div className="text-center space-y-1">
+                <div className="text-primary font-semibold text-sm flex items-center justify-center gap-1 select-none">
+                  <span>✓</span> Risk Detection
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-normal">Unmask unfavorable and missing terms</p>
+              </div>
+              <div className="text-center space-y-1">
+                <div className="text-primary font-semibold text-sm flex items-center justify-center gap-1 select-none">
+                  <span>✓</span> Plain English
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-normal">Deconstruct legalese into readable notes</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Redesigned Active Workspace
+          <>
+            {/* Header row */}
+            <div className="flex items-center justify-between border-b border-border px-6 py-4 flex-shrink-0 bg-card select-none">
+              <div className="min-w-0 flex items-center gap-3">
+                {!sidebarOpen && (
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-1.5 hover:bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground md:hidden cursor-pointer shadow-sm"
+                    title="Open history"
+                  >
+                    <History className="w-4.5 h-4.5" />
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-base font-bold text-foreground truncate">{uploadedFile?.name || 'Document Analysis'}</h2>
+                  <p className="text-xs text-muted-foreground">Interactive annotations & risk reports</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportPDF}
+                  className="px-3 py-1.5 bg-card hover:bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Export Analysis Report to PDF"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export Report</span>
+                </button>
+                <button
+                  onClick={resetForNewDocument}
+                  className="px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-xs transition-all cursor-pointer"
+                >
+                  New Document
+                </button>
+                {!chatOpen && (
+                  <button
+                    onClick={() => setChatOpen(true)}
+                    className="p-1.5 hover:bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground cursor-pointer shadow-sm"
+                    title="Open AI Chat"
+                  >
+                    <MessageCircle className="w-4.5 h-4.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Collapsible Executive Summary bar */}
+            <div className="bg-card border-b border-border px-6 py-3 flex-shrink-0 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0 flex-1 select-none">
+                  <span className="font-semibold text-foreground flex-shrink-0">Executive Summary:</span>
+                  <span className="truncate">{summary || 'No summary available.'}</span>
+                </div>
+                <button
+                  onClick={() => setShowFullSummary(!showFullSummary)}
+                  className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 cursor-pointer flex-shrink-0 ml-4 select-none"
+                >
+                  <span>{showFullSummary ? 'Collapse' : 'Expand'} Summary</span>
+                  {showFullSummary ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {showFullSummary && (
+                <div className="mt-3 border-t border-border pt-4 max-h-[30vh] overflow-y-auto custom-scrollbar text-xs space-y-4 text-muted-foreground leading-relaxed">
+                  {comprehensiveSummary ? (
+                    <div className="space-y-4">
+                      {comprehensiveSummary.executive_summary && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                          <p className="text-foreground font-bold mb-1">Executive Summary</p>
+                          <p className="whitespace-pre-wrap">{comprehensiveSummary.executive_summary}</p>
+                        </div>
+                      )}
+                      
+                      {comprehensiveSummary.parties && comprehensiveSummary.parties.length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1.5">Parties Involved</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {comprehensiveSummary.parties.map((party, idx) => (
+                              <div key={idx} className="bg-muted border border-border rounded-lg p-2.5 text-[11px]">
+                                <span className="font-bold text-foreground">{party.name}</span>
+                                <span className="text-primary block font-medium mt-0.5">{party.role}</span>
+                                {party.simple_explanation && <p className="text-muted-foreground mt-1 font-sans">{party.simple_explanation}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {comprehensiveSummary.purpose && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1">Purpose</h5>
+                          <p>{comprehensiveSummary.purpose}</p>
+                        </div>
+                      )}
+
+                      {comprehensiveSummary.key_obligations && Object.keys(comprehensiveSummary.key_obligations).length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1.5">Key Obligations</h5>
+                          <div className="space-y-2">
+                            {Object.entries(comprehensiveSummary.key_obligations).map(([party, obligation], idx) => (
+                              <div key={idx} className="bg-muted border border-border rounded-lg p-2 text-[11px]">
+                                <span className="font-bold text-foreground">{party}</span>
+                                <p className="text-muted-foreground mt-0.5 leading-normal">{obligation}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {comprehensiveSummary.financial_terms && comprehensiveSummary.financial_terms.length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1.5">Financial Terms</h5>
+                          <div className="space-y-2">
+                            {comprehensiveSummary.financial_terms.map((term, idx) => (
+                              <div key={idx} className="bg-muted border border-border rounded-lg p-2 text-[11px]">
+                                <div className="flex justify-between items-start font-medium">
+                                  <span className="text-foreground">{term.item}</span>
+                                  <span className="text-primary">{term.amount}</span>
+                                </div>
+                                {term.simple_explanation && <p className="text-muted-foreground mt-1 leading-normal">{term.simple_explanation}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {comprehensiveSummary.term_and_termination && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1.5">Term & Termination</h5>
+                          <div className="bg-muted border border-border rounded-lg p-2.5 space-y-1">
+                            <div><span className="font-bold text-foreground">Duration:</span> {comprehensiveSummary.term_and_termination.duration}</div>
+                            {comprehensiveSummary.term_and_termination.renewal_terms && (
+                              <div><span className="font-bold text-foreground">Renewal:</span> {comprehensiveSummary.term_and_termination.renewal_terms}</div>
+                            )}
+                            {comprehensiveSummary.term_and_termination.termination_process && (
+                              <div><span className="font-bold text-foreground">Process:</span> {comprehensiveSummary.term_and_termination.termination_process}</div>
+                            )}
+                            {comprehensiveSummary.term_and_termination.simple_explanation && (
+                              <p className="text-muted-foreground pt-1.5 border-t border-border mt-1.5 leading-normal">{comprehensiveSummary.term_and_termination.simple_explanation}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {comprehensiveSummary.legal_terms_explained && comprehensiveSummary.legal_terms_explained.length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-foreground mb-1.5">Plain English Definitions</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {comprehensiveSummary.legal_terms_explained.map((item, idx) => (
+                              <div key={idx} className="bg-primary/5 border border-primary/10 rounded-lg p-2">
+                                <span className="font-bold text-foreground block">{item.term}</span>
+                                <p className="text-muted-foreground mt-0.5 leading-normal">{item.meaning}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{summary}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Severity Filter Chips row */}
+            <div className="px-6 py-2.5 border-b border-border bg-muted/20 flex items-center justify-between flex-shrink-0 select-none">
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar min-w-0">
+                <span className="text-xs font-semibold text-muted-foreground mr-1.5">Severity Filter:</span>
+                {[
+                  { id: 'All', label: 'All Risks', count: allCount, color: 'bg-muted border-border hover:bg-border text-foreground' },
+                  { id: 'Critical', label: 'Critical', count: criticalCount, color: 'bg-destructive/10 border-destructive/30 hover:bg-destructive/20 text-destructive' },
+                  { id: 'High', label: 'High', count: highCount, color: 'bg-destructive/10 border-destructive/20 hover:bg-destructive/15 text-destructive' },
+                  { id: 'Medium', label: 'Medium', count: mediumCount, color: 'bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/15 text-orange-600 dark:text-orange-500' },
+                  { id: 'Low', label: 'Low', count: lowCount, color: 'bg-primary/10 border-primary/20 hover:bg-primary/15 text-primary' }
+                ].map((chip) => {
+                  const isSelected = severityFilter === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      onClick={() => {
+                        setSeverityFilter(chip.id);
+                        setActiveClauseIndex(null);
+                      }}
+                      className={`px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                        isSelected 
+                          ? 'ring-2 ring-primary ring-offset-1 bg-card border-primary/40' 
+                          : chip.color
+                      }`}
+                    >
+                      <span>{chip.label}</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-background border border-border/50 text-[10px]">{chip.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Split Content Area: Document pane left + Annotations pane right */}
+            <div className="flex-1 flex overflow-hidden min-h-0 bg-background">
+              {/* Left Column: Document Reading Pane */}
+              <div className="flex-grow overflow-y-auto p-6 bg-card border-r border-border custom-scrollbar flex flex-col items-center">
+                <div className="w-full max-w-[70ch] py-4">
+                  {renderHighlightedText()}
+                </div>
+              </div>
+
+              {/* Right Column: Side Annotations Pane */}
+              <div className="w-[340px] overflow-y-auto p-4 bg-muted/10 border-l border-border custom-scrollbar flex-shrink-0 flex flex-col gap-3">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5 select-none">
+                  <ShieldAlert className="w-4 h-4 text-primary" />
+                  <span>Flagged Risks ({filteredRiskClauses.length})</span>
+                </h4>
+                
+                {filteredRiskClauses.length > 0 ? (
+                  filteredRiskClauses.map((clause, idx) => {
                     const { score, level } = getRiskDisplay(clause);
+                    const isSelected = activeClauseIndex === idx;
                     const text = clause?.clause_text || clause?.clauseText || '';
                     const rationale = clause?.rationale || clause?.reason || '';
                     const mitigation = getMitigation(clause);
                     const replacement = getReplacementClause(clause);
+                    
                     return (
-                      <li key={`risk-${idx}`} className="p-4 rounded-xl border border-border/40 bg-background/40">
-                        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-secondary mb-2">
-                          <ShieldAlert className="w-5 h-5" />
-                          <span>Risk: {level}{score ? ` • ${score}/5` : ''}</span>
+                      <div
+                        key={`annotation-card-${idx}`}
+                        id={`annotation-card-${idx}`}
+                        onClick={() => scrollToHighlight(idx)}
+                        className={`p-4 rounded-xl border bg-card transition-all duration-200 cursor-pointer flex flex-col gap-2.5 shadow-sm ${
+                          isSelected 
+                            ? 'border-primary ring-1 ring-primary' 
+                            : 'border-border hover:border-border/80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between select-none">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
+                            level === 'Critical' || level === 'High' 
+                              ? 'bg-destructive/10 text-destructive border border-destructive/20' 
+                              : level === 'Medium' 
+                                ? 'bg-orange-500/10 text-orange-600 border border-orange-500/20' 
+                                : 'bg-primary/10 text-primary border border-primary/20'
+                          }`}>
+                            {level} Risk {score ? `• ${score}/5` : ''}
+                          </span>
+                          {isSelected && <span className="text-[10px] text-primary font-semibold">Matched highlight</span>}
                         </div>
+                        
                         {text && (
-                          <p className="text-base text-foreground leading-relaxed mb-2 whitespace-pre-wrap">{text}</p>
+                          <p className="text-xs text-muted-foreground font-serif leading-relaxed italic border-l-2 border-border pl-2.5 py-0.5 select-text">
+                            "{text.length > 140 ? text.slice(0, 140) + '...' : text}"
+                          </p>
                         )}
+                        
                         {rationale && (
-                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{rationale}</p>
+                          <div className="text-xs text-foreground/80 leading-normal select-text">
+                            <span className="font-semibold block text-[11px] text-foreground uppercase tracking-wide mb-0.5 select-none">Rationale:</span>
+                            {rationale}
+                          </div>
                         )}
+                        
                         {mitigation && (
-                          <div className="mt-3 flex items-start gap-2 text-sm bg-primary/10 border border-primary/30 rounded-lg p-3">
-                            <Lightbulb className="w-5 h-5 mt-0.5 text-primary" />
-                            <div className="text-muted-foreground whitespace-pre-wrap">
-                              <span className="font-semibold text-primary">Suggested Change:</span> {mitigation}
+                          <div className="bg-primary/5 border border-primary/25 rounded-lg p-2.5 text-xs select-text">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-primary mb-1 select-none">
+                              <Lightbulb className="w-3.5 h-3.5" />
+                              <span>Suggested Change</span>
                             </div>
+                            <p className="text-muted-foreground leading-normal">{mitigation}</p>
                           </div>
                         )}
+
                         {replacement && (
-                          <div className="mt-3 flex items-start gap-2 text-sm bg-card/50 border border-border/40 rounded-lg p-3">
-                            <FileText className="w-5 h-5 mt-0.5 text-secondary" />
-                            <div className="text-muted-foreground whitespace-pre-wrap">
-                              <span className="font-semibold text-foreground">Alternate Clause:</span> {replacement}
+                          <div className="bg-muted/50 border border-border rounded-lg p-2.5 text-xs mt-0.5 flex flex-col gap-2 select-text">
+                            <div>
+                              <span className="font-semibold block text-[11px] text-foreground uppercase tracking-wide select-none">Alternate Clause:</span>
+                              <p className="text-muted-foreground mt-1 leading-normal font-serif">"{replacement}"</p>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(replacement);
+                                toast.success("Alternate clause copied to clipboard!");
+                              }}
+                              className="self-end px-2.5 py-1 bg-card hover:bg-muted border border-border rounded text-[10px] font-medium text-foreground transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Copy className="w-3 h-3" />
+                              <span>Copy Clause</span>
+                            </button>
                           </div>
                         )}
-                      </li>
+                      </div>
                     );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-base text-muted-foreground leading-relaxed">
-                  No high-risk clauses were flagged in the preview.
-                </p>
-              )}
-            </div>
-          </div>
-        </ExpandedModal>
-      )}
-
-      {expandedSection === 'chat' && (
-        <ExpandedModal
-          section="chat"
-          title="Ask Questions"
-          onClose={() => setExpandedSection(null)}
-        >
-          <div className="flex flex-col h-[70vh]">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar mb-6">
-              {chatHistory.map((message) => (
-                <div key={message.id} className={`flex items-start gap-3 ${message.sender === 'User' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                  {message.sender !== 'User' && (
-                    <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className={`max-w-[75%]`}>
-                    <div className={`rounded-2xl px-5 py-4 ${
-                      message.sender === 'User' ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/10' : 'bg-card text-foreground border border-border'
-                    }`}>
-                      <p className="text-base leading-relaxed whitespace-pre-wrap">{message.message}</p>
-                    </div>
+                  })
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-card border border-border rounded-xl">
+                    <Check className="w-8 h-8 text-primary bg-primary/10 p-1.5 rounded-full mb-2" />
+                    <p className="text-xs font-semibold text-foreground">No Risks Flagged</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">No risks found for filter "{severityFilter}"</p>
                   </div>
-                  {message.sender === 'User' && (
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-card/50 border border-border/50 px-5 py-4 rounded-2xl flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <span className="text-base text-muted-foreground">Thinking...</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Input */}
-            <div className="border-t border-border/50 pt-4">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask anything about your document..."
-                  disabled={!sessionId || loading}
-                  className="flex-1 px-5 py-4 bg-card/50 border border-border/50 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-base"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!sessionId || !chatMessage.trim() || loading}
-                  className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-foreground rounded-xl font-medium hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Send className="w-6 h-6" /><span>Send</span></>}
-                </button>
+                )}
               </div>
             </div>
+          </>
+        )}
+      </div>
+
+      {/* Mobile Chat Backdrop */}
+      <div 
+        className={`md:hidden fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 ${
+          chatOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setChatOpen(false)}
+      />
+
+      {/* Right Column: AI Co-pilot Chat Interface */}
+      <div className={`
+        border-l border-border flex flex-col bg-card flex-shrink-0 z-40 select-none
+        transition-all duration-300 ease-out
+        fixed md:relative inset-y-0 md:inset-y-auto right-0 md:h-full
+        top-[var(--navbar-height)] md:top-0
+        ${chatOpen 
+          ? 'translate-x-0 w-full sm:w-80 md:w-[380px] opacity-100' 
+          : 'translate-x-full w-0 opacity-0 pointer-events-none'
+        }
+      `}>
+        <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0 h-16 bg-muted/10">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
+              <MessageCircle className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">Ask AdvocAI</h3>
+              <p className="text-[10px] text-muted-foreground truncate">Interactive legal co-pilot</p>
+            </div>
           </div>
-        </ExpandedModal>
-      )}
+          <button 
+            onClick={() => setChatOpen(false)} 
+            className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground flex-shrink-0"
+            title="Close chat"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-background/50 animate-fade-in">
+          {chatHistory.map((message) => (
+            <div key={message.id} className={`flex items-start gap-2.5 ${message.sender === 'User' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+              {message.sender !== 'User' && (
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4" />
+                </div>
+              )}
+              <div className="max-w-[82%]">
+                <div className={`rounded-xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                  message.sender === 'User' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-card text-foreground border border-border'
+                }`}>
+                  <p className="whitespace-pre-wrap break-words">{message.message}</p>
+                </div>
+              </div>
+              {message.sender === 'User' && (
+                <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 border border-border">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-card border border-border px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground font-medium">Thinking...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Chat Input */}
+        <div className="p-4 border-t border-border bg-card flex-shrink-0">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={sessionId ? "Ask co-pilot anything..." : "Upload a document to chat"}
+              disabled={!sessionId || loading}
+              className="flex-1 px-3 py-2.5 bg-background border border-input rounded-lg text-xs placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all min-w-0"
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!sessionId || !chatMessage.trim() || loading}
+              className="px-3.5 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-xs font-semibold shadow-sm transition-all duration-205 flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+            >
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Send className="w-3.5 h-3.5" /><span>Send</span></>}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

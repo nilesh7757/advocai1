@@ -240,7 +240,7 @@ def batch_refine_clauses(
     # Sort by risk score (highest first) for priority processing
     sorted_indexed = sorted(
         indexed_clauses, 
-        key=lambda x: x[1].get('risk_score', 0), 
+        key=lambda x: x[1].get('risk_score') or 0, 
         reverse=True
     )
     

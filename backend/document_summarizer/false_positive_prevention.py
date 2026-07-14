@@ -371,8 +371,8 @@ def should_filter_clause(
     Returns:
         Tuple of (should_filter, reason)
     """
-    risk_score = clause.get('risk_score', 3)
-    confidence = clause.get('confidence', 0.5)
+    risk_score = clause.get('risk_score') or 3
+    confidence = clause.get('confidence') or 0.5
     clause_text = clause.get('clause_text', '')
     replacement = clause.get('replacement_clause', '')
     

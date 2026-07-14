@@ -707,7 +707,7 @@ def _normalize_clause_structure(raw_clause: Dict[str, Any]) -> Dict[str, Any]:
         'mitigation': mitigation,
         'replacement_clause': replacement_clause,
         'position': raw_clause.get('position'),  # Preserve position for deduplication
-        'confidence': raw_clause.get('confidence'),  # Preserve confidence
+        'confidence': raw_clause.get('confidence') or 0.5,  # Preserve confidence, default if None
         'category': raw_clause.get('category'),  # Preserve category
         'source': raw_clause.get('source'),  # Preserve source
     }
@@ -869,7 +869,7 @@ def _dedupe_clauses(clauses: List[Dict[str, Any]], limit: int = 8) -> List[Dict[
             existing_index = seen[fingerprint]
             existing_clause = deduped[existing_index]
             # Keep higher risk score
-            if normalized_clause.get('risk_score', 0) > existing_clause.get('risk_score', 0):
+            if (normalized_clause.get('risk_score') or 0) > (existing_clause.get('risk_score') or 0):
                 deduped[existing_index] = normalized_clause
             else:
                 # Merge missing attributes
@@ -898,7 +898,7 @@ def _dedupe_clauses(clauses: List[Dict[str, Any]], limit: int = 8) -> List[Dict[
                     if clause_length > 0 and (overlap > clause_length * 0.5 or overlap > existing_length * 0.5):
                         is_duplicate = True
                         # Keep higher risk score
-                        if normalized_clause.get('risk_score', 0) > existing_clause.get('risk_score', 0):
+                        if (normalized_clause.get('risk_score') or 0) > (existing_clause.get('risk_score') or 0):
                             deduped[i] = normalized_clause
                         break
         
