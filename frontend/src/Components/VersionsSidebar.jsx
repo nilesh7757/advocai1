@@ -46,6 +46,21 @@ const VersionsSidebar = ({ conversationId, onSelectVersion, onClose, currentVers
     }
   };
 
+  const handleDownloadVersionDocx = async (versionNumber) => {
+    try {
+      const response = await axios.get(`utils/conversations/${conversationId}/versions/${versionNumber}/download-docx/`, {
+        responseType: 'blob',
+      });
+      const filename = `${documentTitle}_v${versionNumber}.docx`;
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      saveAs(blob, filename);
+      toast.success(`Version ${versionNumber} Word document downloaded!`);
+    } catch (err) {
+      console.error(`Error downloading version ${versionNumber} Word document:`, err);
+      toast.error(`Failed to download version ${versionNumber} Word document.`);
+    }
+  };
+
   const handleDeleteVersionClick = async (versionNumber) => { // Renamed to avoid conflict with prop
     if (onDeleteVersion) {
       await onDeleteVersion(conversationId, versionNumber);
@@ -144,6 +159,15 @@ const VersionsSidebar = ({ conversationId, onSelectVersion, onClose, currentVers
                     title="Download PDF"
                   >
                     <Download className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    onClick={() => handleDownloadVersionDocx(version.version_number)}
+                    size="sm"
+                    variant="outline"
+                    className="border-border/20 bg-card/40 hover:bg-card/60 hover:border-border/30 text-muted-foreground text-xs rounded-lg transition-all px-2"
+                    title="Download Word"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
                   </Button>
                   <Button
                     onClick={() => handleDeleteVersionClick(version.version_number)} // Call the new handler

@@ -376,6 +376,23 @@ const DocumentCreation = () => {
     }
   };
 
+  const handleDownloadDocx = async () => {
+    if (!mongoConversationId) {
+      toast.error('Please save the document first.');
+      return;
+    }
+    try {
+      const response = await axios.get(`api/utils/conversations/${mongoConversationId}/download-latest-docx/`, {
+        responseType: 'blob',
+      });
+      saveAs(response.data, `${title || 'legal_document'}.docx`);
+      toast.success('Word document downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading Word document:', error);
+      toast.error(`Failed to download Word document: ${error.message}`);
+    }
+  };
+
   const handleKeyPress = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -844,15 +861,25 @@ const DocumentCreation = () => {
                         <PenTool className="w-4 h-4 text-muted-foreground" />
                         <span>Add Signature</span>
                       </button>
-                      <button
+                       <button
                         onClick={() => {
                           setIsOverflowOpen(false);
                           handleDownloadPdf();
                         }}
-                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
                       >
                         <Download className="w-4 h-4 text-muted-foreground" />
                         <span>Download PDF</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          handleDownloadDocx();
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span>Download Word</span>
                       </button>
                     </div>
                   </>

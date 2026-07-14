@@ -125,6 +125,20 @@ const MyDocuments = () => {
     }
   };
 
+  const handleDownloadDocx = async (documentId, title) => {
+    try {
+      const response = await axios.get(`api/utils/conversations/${documentId}/download-latest-docx/`, {
+        responseType: 'blob',
+      });
+      const { saveAs } = await import('file-saver');
+      saveAs(response.data, `${title || 'legal_document'}.docx`);
+      toast.success('Word document downloaded successfully!');
+    } catch (err) {
+      console.error('Error downloading Word document:', err);
+      toast.error('Failed to download Word document.');
+    }
+  };
+
   const handleEditClick = (docId, currentTitle) => {
     setEditingDocId(docId);
     setNewTitle(currentTitle);
@@ -727,6 +741,16 @@ const MyDocuments = () => {
                                     <button
                                       onClick={() => {
                                         setActiveDropdownId(null);
+                                        handleDownloadDocx(doc._id, doc.title);
+                                      }}
+                                      className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                      <span>Download Word</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
                                         handleDeleteDocument(doc._id);
                                       }}
                                       className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted text-destructive flex items-center gap-2 cursor-pointer transition-colors"
@@ -882,6 +906,16 @@ const MyDocuments = () => {
                                   >
                                     <Download className="w-3.5 h-3.5 text-muted-foreground" />
                                     <span>Download PDF</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setActiveDropdownId(null);
+                                      handleDownloadDocx(doc._id, doc.title);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span>Download Word</span>
                                   </button>
                                   <button
                                     onClick={() => {
@@ -1049,10 +1083,20 @@ const MyDocuments = () => {
                                         setActiveDropdownId(null);
                                         handleDownloadPdf(doc._id, doc.title);
                                       }}
-                                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
                                     >
                                       <Download className="w-3.5 h-3.5 text-muted-foreground" />
                                       <span>Download PDF</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setActiveDropdownId(null);
+                                        handleDownloadDocx(doc._id, doc.title);
+                                      }}
+                                      className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                      <span>Download Word</span>
                                     </button>
                                   </div>
                                 </>
@@ -1184,10 +1228,20 @@ const MyDocuments = () => {
                                       setActiveDropdownId(null);
                                       handleDownloadPdf(doc._id, doc.title);
                                     }}
-                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
                                   >
                                     <Download className="w-3.5 h-3.5 text-muted-foreground" />
                                     <span>Download PDF</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setActiveDropdownId(null);
+                                      handleDownloadDocx(doc._id, doc.title);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span>Download Word</span>
                                   </button>
                                 </div>
                               </>

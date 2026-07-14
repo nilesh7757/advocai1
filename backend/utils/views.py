@@ -218,3 +218,148 @@ def download_version_pdf(request, pk, version_number):
     except Exception as e:
         print(f"Error in download_version_pdf: {e}")
         return Response({'error': f'Error generating PDF: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _generate_docx_from_markdown(content):
+    from docx import Document
+    from html.parser import HTMLParser
+    import markdown
+    from io import BytesIO
+
+    # Convert markdown to html first (which keeps HTML tags unchanged)
+    html_content = markdown.markdown(content)
+
+    doc = Document()
+
+    class DocxHTMLParser(HTMLParser):
+        def __init__(self, doc):
+            super().__init__()
+            self.doc = doc
+            self.current_paragraph = None
+            self.is_bold = False
+            self.is_italic = False
+            self.is_underline = False
+            self.list_type = None  # 'ul' or 'ol'
+            
+        def handle_starttag(self, tag, attrs):
+            if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                level = int(tag[1])
+                self.current_paragraph = self.doc.add_heading('', level=level)
+            elif tag == 'p':
+                self.current_paragraph = self.doc.add_paragraph()
+            elif tag == 'li':
+                style = 'List Bullet' if self.list_type == 'ul' else 'List Number'
+                self.current_paragraph = self.doc.add_paragraph(style=style)
+            elif tag == 'ul':
+                self.list_type = 'ul'
+            elif tag == 'ol':
+                self.list_type = 'ol'
+            elif tag == 'strong' or tag == 'b':
+                self.is_bold = True
+            elif tag == 'em' or tag == 'i':
+                self.is_italic = True
+            elif tag == 'u':
+                self.is_underline = True
+            elif tag == 'br':
+                if self.current_paragraph:
+                    self.current_paragraph.add_run('\n')
+                else:
+                    self.current_paragraph = self.doc.add_paragraph()
+                    
+        def handle_endtag(self, tag):
+            if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li']:
+                self.current_paragraph = None
+            elif tag in ['ul', 'ol']:
+                self.list_type = None
+            elif tag == 'strong' or tag == 'b':
+                self.is_bold = False
+            elif tag == 'em' or tag == 'i':
+                self.is_italic = False
+            elif tag == 'u':
+                self.is_underline = False
+                
+        def handle_data(self, data):
+            if not data.strip() and not self.current_paragraph:
+                return
+            
+            if not self.current_paragraph:
+                self.current_paragraph = self.doc.add_paragraph()
+                
+            run = self.current_paragraph.add_run(data)
+            if self.is_bold:
+                run.bold = True
+            if self.is_italic:
+                run.italic = True
+            if self.is_underline:
+                run.underline = True
+
+    parser = DocxHTMLParser(doc)
+    parser.feed(html_content)
+
+    docx_file = BytesIO()
+    doc.save(docx_file)
+    docx_file.seek(0)
+    return docx_file
+
+
+@api_view(['POST'])
+def download_docx(request):
+    """
+    API endpoint to download a legal document as DOCX.
+    """
+    document_content = request.data.get('document_content')
+    if not document_content:
+        return Response({'error': 'Document content is required'}, status=400)
+
+    try:
+        docx_file = _generate_docx_from_markdown(document_content)
+        response = FileResponse(docx_file, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = 'attachment; filename="legal_document.docx"'
+        return response
+    except Exception as e:
+        return Response({'error': f'Error generating DOCX: {e}'}, status=500)
+
+
+@api_view(['GET'])
+def download_latest_conversation_docx(request, pk):
+    """
+    Downloads the latest document content from a conversation as a DOCX file.
+    """
+    conversation = get_conversation_by_id(pk)
+    if not conversation or 'document_versions' not in conversation or not conversation['document_versions']:
+        return Response({'error': 'No document content found for this conversation.'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        latest_version_content = conversation['document_versions'][-1]['content']
+        docx_file = _generate_docx_from_markdown(latest_version_content)
+        
+        response = FileResponse(docx_file, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename="{conversation.get("title", "legal_document")}.docx"'
+        return response
+    except Exception as e:
+        return Response({'error': f'Error generating DOCX: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def download_version_docx(request, pk, version_number):
+    """
+    Downloads a specific document version from a conversation as a DOCX file.
+    """
+    try:
+        conversation = get_conversation_by_id(pk)
+        if not conversation or 'document_versions' not in conversation or not conversation['document_versions']:
+            return Response({'error': 'No document versions found for this conversation.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        version = next((v for v in conversation['document_versions'] if v['version_number'] == version_number), None)
+        if not version:
+            return Response({'error': 'Version content not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        docx_file = _generate_docx_from_markdown(version['content'])
+        filename = f"{conversation.get('title', 'legal_document')}_v{version_number}.docx"
+        
+        response = FileResponse(docx_file, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        print(f"Error in download_version_docx: {e}")
+        return Response({'error': f'Error generating DOCX: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
