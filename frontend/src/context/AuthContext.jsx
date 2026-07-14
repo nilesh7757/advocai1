@@ -16,12 +16,8 @@ export const AuthProvider = ({ children }) => {
       const accessToken = localStorage.getItem('access_token');
       if (accessToken) {
         try {
-          // Validate token and fetch user profile
-          const response = await axios.get('/api/auth/profile/', {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
-          });
+          // Validate token and fetch user profile using the configured instance
+          const response = await axios.get('/api/auth/profile/');
           setUser(response.data);
           setIsAuthenticated(true);
         } catch (error) {
