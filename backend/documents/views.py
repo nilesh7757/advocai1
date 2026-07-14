@@ -41,10 +41,27 @@ def create_conversation_with_chat(request):
         else:
             ai_response_content = "" # Keep document content empty if response is chat/vague query
 
-        # Determine a title for the new document (can be improved)
-        title = message[:50] + "..." if len(message) > 50 else message
+        # Determine a title for the new document based on tagging / keywords
+        from datetime import datetime
+        current_date = datetime.now().strftime("%B %d, %Y")
+        
+        message_lower = message.lower()
+        if 'nda' in message_lower or 'non-disclosure' in message_lower or 'non disclosure' in message_lower:
+            tag = "Non-Disclosure Agreement"
+        elif 'rental' in message_lower or 'lease' in message_lower:
+            tag = "Rental Agreement"
+        elif 'employment' in message_lower or 'offer letter' in message_lower:
+            tag = "Employment Offer Letter"
+        elif 'freelance' in message_lower or 'contract' in message_lower:
+            tag = "Freelance Contract"
+        elif 'agreement' in message_lower:
+            tag = "Legal Agreement"
+        else:
+            tag = "Legal Document"
+            
+        title = f"{tag} ({current_date})"
         if not title:
-            title = "New Document"
+            title = f"Legal Document ({current_date})"
 
         # Prepare messages for saving
         messages = [
