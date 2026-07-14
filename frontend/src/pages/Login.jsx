@@ -152,14 +152,18 @@ const Login = () => {
           </h1>
           <p className="text-muted-foreground">Enter your email below to login to your account</p>
         </div>
-
-        <GoogleLoginButton
-          onSuccess={handleGoogleLogin}
-          onError={handleGoogleError}
-          text="Sign in with Google"
-          disabled={loading}
-        />
-
+        {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+          <GoogleLoginButton
+            onSuccess={handleGoogleLogin}
+            onError={handleGoogleError}
+            text="Sign in with Google"
+            disabled={loading}
+          />
+        ) : (
+          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-lg" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
+            Google Login is unavailable (Missing Configuration)
+          </div>
+        )}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border/50" />

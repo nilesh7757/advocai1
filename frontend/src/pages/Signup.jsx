@@ -298,12 +298,18 @@ const { setUser, setIsAuthenticated } = useAuth();
           </Button>
         </div>
 
-        <GoogleLoginButton
-          onSuccess={handleGoogleSignup}
-          onError={handleGoogleError}
-          text="Sign up with Google"
-          disabled={loading}
-        />
+        {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+          <GoogleLoginButton
+            onSuccess={handleGoogleSignup}
+            onError={handleGoogleError}
+            text="Sign up with Google"
+            disabled={loading}
+          />
+        ) : (
+          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-lg" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
+            Google Signup is unavailable (Missing Configuration)
+          </div>
+        )}
 
         <div className="relative">
           <div className="relative flex justify-center text-xs uppercase">
