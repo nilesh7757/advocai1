@@ -12,8 +12,8 @@ const MenuBar = ({ editor }) => {
       disabled={disabled}
       className={`p-2 rounded-lg transition-all duration-200 ${
         isActive 
-          ? 'bg-gradient-to-r from-primary to-secondary text-foreground shadow-lg scale-105' 
-          : 'text-muted-foreground hover:bg-foreground/10 hover:text-foreground hover:scale-105'
+          ? 'bg-primary text-primary-foreground shadow-sm' 
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       } disabled:opacity-40 disabled:cursor-not-allowed`}
       title={title}
     >
@@ -21,10 +21,10 @@ const MenuBar = ({ editor }) => {
     </button>
   );
 
-  const Divider = () => <div className="w-px h-6 bg-border/10 mx-1"></div>;
+  const Divider = () => <div className="w-px h-6 bg-border mx-1"></div>;
 
   return (
-    <div className="flex items-center gap-1 p-3 bg-gradient-to-r from-card to-card border-b border-border/10 rounded-t-xl backdrop-blur-xl flex-wrap">
+    <div className="flex items-center gap-1 p-3 bg-card border-b border-border rounded-t-xl flex-wrap">
       <ToolButton onClick={() => editor.chain().focus().toggleBold().run()} disabled={!editor.can().chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="Bold (Ctrl+B)" icon={Bold} />
       <ToolButton onClick={() => editor.chain().focus().toggleItalic().run()} disabled={!editor.can().chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} title="Italic (Ctrl+I)" icon={Italic} />
       <ToolButton onClick={() => editor.chain().focus().toggleUnderline().run()} disabled={!editor.can().chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')} title="Underline (Ctrl+U)" icon={UnderlineIcon} />

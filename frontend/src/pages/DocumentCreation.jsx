@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FileText, PenTool, Send, Download, User, Bot, Save, Edit, Eye, Bold, Italic, Strikethrough, Code, Pilcrow, Heading1, Heading2, Heading3, Indent as IndentIcon, Outdent as OutdentIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline as UnderlineIcon, MessageCircle, History, FileCheck, Minus, Menu, X, XCircle, Maximize, Share2 } from 'lucide-react'; // Added Maximize, Share2
+import { FileText, PenTool, Send, Download, User, Bot, Save, Edit, Eye, Bold, Italic, Strikethrough, Code, Pilcrow, Heading1, Heading2, Heading3, Indent as IndentIcon, Outdent as OutdentIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify, Underline as UnderlineIcon, MessageCircle, History, FileCheck, Minus, Menu, X, XCircle, Maximize, Share2, Sparkles } from 'lucide-react'; // Added Maximize, Share2, Sparkles
 import axios from '../api/axios';
 import { saveAs } from 'file-saver';
 import '../styles/MarkdownPreview.css';
@@ -60,12 +60,13 @@ const DocumentCreation = () => {
 
   const chatContainerRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
-  const [isVersionsSidebarOpen, setIsVersionsSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [rightSidebarTab, setRightSidebarTab] = useState('comments'); // 'comments' | 'versions'
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(null);
   const [originalDocumentContent, setOriginalDocumentContent] = useState(''); // New state to track original content
   const [isTitleEditing, setIsTitleEditing] = useState(false); // New state for title editing
   const [tempTitle, setTempTitle] = useState(''); // New state for temporary title during editing
-  const [commentsSidebarOpen, setCommentsSidebarOpen] = useState(false); // State for comments sidebar
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false); // State for SignatureModal
   const [documentSharedWithUsers, setDocumentSharedWithUsers] = useState([]); // New state for shared users
@@ -272,7 +273,7 @@ const DocumentCreation = () => {
         setFinalDocument(specificVersion.content);
         setCurrentVersion(versionNumber);
         toast.success(`Loaded version ${versionNumber}`);
-        setIsVersionsSidebarOpen(false);
+        setRightSidebarOpen(false);
       } else {
         toast.error(`Version ${versionNumber} not found.`);
       }
@@ -481,77 +482,75 @@ const DocumentCreation = () => {
     return (
       <div className="flex relative h-screen bg-background overflow-hidden">
         <div className="w-full relative z-10 flex flex-col h-screen overflow-hidden">
-          {/* Big Navbar */}
-          <div className="px-8 py-6 bg-card border-b border-border flex-shrink-0">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary/10 rounded-xl text-primary border border-primary/20">
-                    <FileText className="w-8 h-8" />
-                  </div>
-                  <h1 className="text-3xl font-bold text-foreground">Legal Document Assistant</h1>
-                </div>
+          {/* Unified Top Bar Header */}
+          <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
+              <h2 className="text-xl font-bold text-foreground">Legal Document Assistant</h2>
+            </div>
 
-              <div className="flex gap-4 items-end">
-                <div className="flex-1 relative">
-                  <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter your document title..."
-                    className="pl-12 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12 text-lg"
-                  />
-                </div>
-                <Button
-                  onClick={handleSaveConversation}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 rounded-xl shadow-sm transition-all hover:scale-[1.02] h-12 whitespace-nowrap cursor-pointer"
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  <span className="font-semibold">Create Document</span>
-                </Button>
+            <div className="flex items-center gap-3 max-w-2xl flex-1 justify-end min-w-0">
+              <div className="relative flex-1 max-w-xs min-w-0">
+                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Document title..."
+                  className="pl-9 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-9 text-xs w-full"
+                />
               </div>
+              <Button
+                onClick={handleSaveConversation}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 rounded-lg shadow-sm h-9 text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Create Document</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
             </div>
           </div>
 
-          {/* Chat Interface */}
-          <div className="flex-1 p-6 lg:p-8 flex items-center justify-center overflow-hidden">
+          {/* Chat Interface Container */}
+          <div className="flex-1 p-6 lg:p-8 flex items-center justify-center overflow-hidden bg-background">
             <Card className="w-full max-w-4xl bg-card border border-border shadow-sm rounded-xl overflow-hidden min-h-[450px] max-h-[600px] flex flex-col">
-              <CardHeader className="pb-6 bg-muted/30 border-b border-border flex-shrink-0">
+              <CardHeader className="pb-4 bg-muted/20 border-b border-border flex-shrink-0 p-5">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                  <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
                     <MessageCircle className="w-6 h-6" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl font-bold text-foreground">AI Assistant</CardTitle>
-                    <CardDescription className="text-muted-foreground">Describe the document you want to create</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">AI Assistant</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Describe the document you want to create</CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-8 flex-1 flex flex-col overflow-hidden">
+              <CardContent className="p-6 flex-1 flex flex-col overflow-hidden bg-card">
                 <div ref={chatContainerRef} className="flex-grow flex flex-col overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
                   {!hasMessages && !isGenerating ? (
-                    <div className="flex-grow flex flex-col items-center justify-center text-center space-y-6 max-w-md mx-auto my-auto py-6">
+                    <div className="flex-grow flex flex-col items-center justify-center text-center space-y-6 max-w-lg mx-auto my-auto py-8">
                       <div className="p-4 bg-primary/10 rounded-full text-primary border border-primary/20">
-                        <PenTool className="w-10 h-10" />
+                        <Sparkles className="w-10 h-10" />
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-foreground">Draft with AdvocAI</h3>
+                        <h3 className="text-xl font-bold text-foreground">What document do you need?</h3>
                         <p className="text-sm text-muted-foreground leading-normal">
                           Describe the legal document you want to create, or click one of the templates below to prefill the prompt.
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2 justify-center pt-2">
+                      <div className="flex flex-wrap gap-2.5 justify-center pt-2">
                         {[
-                          "Draft a standard NDA",
-                          "Create a residential rental agreement",
-                          "Generate a freelance software contract"
+                          "Draft an NDA",
+                          "Create a rental agreement",
+                          "Generate a freelance contract",
+                          "Employment offer letter"
                         ].map((prompt) => (
                           <button
                             key={prompt}
                             onClick={() => setChatMessage(prompt)}
-                            className="px-3.5 py-1.5 bg-muted hover:bg-primary/10 hover:text-primary border border-border hover:border-primary/20 rounded-full text-xs font-medium transition-all cursor-pointer"
+                            className="px-4 py-2 bg-card hover:bg-muted border border-border rounded-full text-sm font-medium transition-colors cursor-pointer text-foreground"
                           >
                             {prompt}
                           </button>
@@ -567,7 +566,7 @@ const DocumentCreation = () => {
                               <Bot className="w-3.5 h-3.5" />
                             </div>
                           )}
-                          <div className={`px-4 py-2.5 rounded-xl max-w-xs text-xs leading-relaxed ${
+                          <div className={`px-4 py-2.5 rounded-lg max-w-xs text-xs leading-relaxed ${
                             msg.sender === 'user'
                               ? 'bg-primary text-primary-foreground shadow-sm'
                               : 'bg-muted text-foreground border border-border'
@@ -586,7 +585,7 @@ const DocumentCreation = () => {
                           <div className="w-6 h-6 flex-shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
                             <Bot className="w-3.5 h-3.5 animate-pulse" />
                           </div>
-                          <div className="px-4 py-2.5 rounded-xl bg-muted border border-border">
+                          <div className="px-4 py-2.5 rounded-lg bg-muted border border-border">
                             <div className="flex gap-1">
                               <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
                               <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -606,16 +605,16 @@ const DocumentCreation = () => {
                     onChange={(e) => setChatMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Describe the document you want to create..."
-                    className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-xl h-12"
+                    className="flex-1 bg-background border border-input text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary rounded-lg h-12 text-sm"
                     disabled={isGenerating}
                   />
                   <Button
                     onClick={handleSendMessage}
                     disabled={isGenerating || !chatMessage.trim()}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 rounded-xl shadow-sm transition-all hover:scale-[1.02] h-12 cursor-pointer"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 rounded-lg shadow-sm h-12 cursor-pointer font-semibold flex items-center gap-2"
                   >
-                    <Send className="w-5 h-5 mr-2" />
-                    <span className="font-semibold">Send</span>
+                    <Send className="w-4 h-4" />
+                    <span>Send</span>
                   </Button>
                 </div>
               </CardContent>
@@ -626,18 +625,22 @@ const DocumentCreation = () => {
     );
   }
 
-  // Document generated view with 3-column layout
   return (
     <div className="flex relative h-full bg-background overflow-hidden overflow-x-hidden">
       {/* Left Sidebar - Chat */}
       <div className={`${sidebarOpen ? 'translate-x-0 w-80 opacity-100' : '-translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-r border-border flex flex-col absolute z-20 overflow-hidden h-full`}> 
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-primary" />
-              <span className="text-foreground font-semibold text-sm">Chat History</span>
-            </div>
+        <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0 h-16 bg-muted/10">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-primary" />
+            <span className="text-foreground font-semibold text-sm">Chat History</span>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+            title="Collapse chat"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
@@ -692,7 +695,7 @@ const DocumentCreation = () => {
             <Button
               onClick={handleSendMessage}
               disabled={isGenerating || !chatMessage.trim()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-10 w-10 p-0 cursor-pointer"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg h-10 w-10 p-0 cursor-pointer flex items-center justify-center"
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -704,19 +707,16 @@ const DocumentCreation = () => {
       <div className={`flex-1 flex flex-col relative z-10 h-full overflow-hidden transition-all duration-300 ${sidebarOpen ? 'ml-80' : 'ml-0'}`}>
         {/* Top Bar */}
         <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-4 min-w-0 flex-1">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 lg:hidden cursor-pointer"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-foreground/10 rounded-lg transition-all text-muted-foreground flex-shrink-0 hidden lg:block cursor-pointer"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-1.5 hover:bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground cursor-pointer shadow-sm flex-shrink-0"
+                title="Open chat history"
+              >
+                <MessageCircle className="w-4.5 h-4.5" />
+              </button>
+            )}
             <div className="min-w-0 flex-1 flex items-center gap-2">
               {isTitleEditing ? (
                 <Input
@@ -750,156 +750,234 @@ const DocumentCreation = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
-            >
-              {isEditing ? (
-                <>
-                  <Eye className="w-4 h-4 mr-1 lg:mr-2" />
-                  <span className="hidden lg:inline">Preview</span>
-                </>
-              ) : (
-                <>
-                  <Edit className="w-4 h-4 mr-1 lg:mr-2" />
-                  <span className="hidden lg:inline">Edit</span>
-                </>
-              )}
-            </Button>
-            {mongoConversationId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsVersionsSidebarOpen(!isVersionsSidebarOpen);
-                  setCommentsSidebarOpen(false);
-                }}
-                className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
+          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end items-center">
+            {/* Segmented Control for Edit/Preview */}
+            <div className="flex bg-muted p-1 rounded-lg mr-1.5">
+              <button
+                onClick={() => setIsEditing(true)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                  isEditing
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <History className="w-4 h-4 mr-1 lg:mr-2" />
-                <span className="hidden lg:inline">Versions</span>
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleFullScreen}
-              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
-              title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
-            >
-              <Maximize className="w-4 h-4 mr-1 lg:mr-2" />
-              <span className="hidden lg:inline">{isFullScreen ? "Exit Fullscreen" : "Fullscreen"}</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShareDocument}
-              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
-              title="Share Document"
-            >
-              <Share2 className="w-4 h-4 mr-1 lg:mr-2" />
-              <span className="hidden lg:inline">Share</span>
-            </Button>
+                <Edit className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                  !isEditing
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Preview</span>
+              </button>
+            </div>
+
+            {/* Comments Button */}
             {mongoConversationId && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setCommentsSidebarOpen(!commentsSidebarOpen);
-                  setIsVersionsSidebarOpen(false);
+                  if (rightSidebarOpen && rightSidebarTab === 'comments') {
+                    setRightSidebarOpen(false);
+                  } else {
+                    setRightSidebarOpen(true);
+                    setRightSidebarTab('comments');
+                  }
                 }}
-                className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all text-xs lg:text-sm cursor-pointer"
+                className={`border border-border rounded-lg text-xs lg:text-sm cursor-pointer ${
+                  rightSidebarOpen && rightSidebarTab === 'comments' ? 'bg-muted text-foreground border-muted' : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
+                }`}
                 title="View Comments"
               >
                 <MessageCircle className="w-4 h-4 mr-1 lg:mr-2" />
                 <span className="hidden lg:inline">Comments</span>
               </Button>
             )}
+
+            {/* Versions Button */}
+            {mongoConversationId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (rightSidebarOpen && rightSidebarTab === 'versions') {
+                    setRightSidebarOpen(false);
+                  } else {
+                    setRightSidebarOpen(true);
+                    setRightSidebarTab('versions');
+                  }
+                }}
+                className={`border border-border rounded-lg text-xs lg:text-sm cursor-pointer ${
+                  rightSidebarOpen && rightSidebarTab === 'versions' ? 'bg-muted text-foreground border-muted' : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+                title="View Versions"
+              >
+                <History className="w-4 h-4 mr-1 lg:mr-2" />
+                <span className="hidden lg:inline">Versions</span>
+              </Button>
+            )}
+
+            {/* Fullscreen Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFullScreen}
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg h-9 w-9 p-0 cursor-pointer flex items-center justify-center"
+              title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+            >
+              <Maximize className="w-4 h-4" />
+            </Button>
+
+            {/* Share Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShareDocument}
+              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg h-9 px-3 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Share Document"
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="hidden lg:inline">Share</span>
+            </Button>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-border mx-1" />
+
+            {/* Overflow Dropdown */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsOverflowOpen(!isOverflowOpen)}
+                className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg h-9 w-9 p-0 transition-all cursor-pointer flex items-center justify-center font-bold text-lg"
+                title="More Actions"
+              >
+                ⋯
+              </Button>
+              {isOverflowOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsOverflowOpen(false)} />
+                  <div className="absolute right-0 mt-1 w-44 bg-card border border-border rounded-lg shadow-md py-1 z-50 animate-fadeIn">
+                    <button
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        setIsSignatureModalOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors border-b border-border/50"
+                    >
+                      <PenTool className="w-4 h-4 text-muted-foreground" />
+                      <span>Add Signature</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        handleDownloadPdf();
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted text-foreground flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-muted-foreground" />
+                      <span>Download PDF</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Save Version Button */}
+            <Button
+              onClick={handleSaveConversation}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-sm font-semibold h-9 px-4 text-xs lg:text-sm cursor-pointer flex items-center gap-1.5"
+            >
+              <Save className="w-4 h-4" />
+              <span>Save Version</span>
+            </Button>
           </div>
         </div>
 
         {/* Document Area */}
-        <div className="flex-1 overflow-hidden flex flex-col p-6 bg-card border border-border rounded-xl shadow-sm">
+        <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
           {isEditing ? (
-            <div className="flex-1 border border-border rounded-t-xl overflow-hidden flex flex-col">
+            <div className="border border-border rounded-xl overflow-hidden flex flex-col bg-card min-h-[500px]">
               <MenuBar editor={editor} />
-              <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-background p-8 markdown-preview text-foreground">
-                <EditorContent editor={editor} />
+              <div ref={documentRef} className="flex-1 p-8 text-foreground bg-background">
+                <div className="max-w-3xl mx-auto w-full select-text">
+                  <EditorContent editor={editor} />
+                </div>
               </div>
             </div>
           ) : (
-            <div ref={documentRef} className="flex-1 overflow-y-auto custom-scrollbar bg-background border border-border rounded-xl p-8 markdown-preview text-foreground">
-                {console.log("Previewing finalDocument:", finalDocument)}
+            <div ref={documentRef} className="bg-background border border-border rounded-xl p-8 text-foreground">
+              <div className="markdown-preview max-w-3xl mx-auto w-full leading-relaxed py-4 select-text">
                 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(finalDocument) }} />
               </div>
+            </div>
           )}
-
-          {/* Action Buttons at Bottom */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSignatureModalOpen(true)} // Open SignatureModal
-              className="border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-all cursor-pointer"
-            >
-              <PenTool className="w-4 h-4 mr-2" />
-              Add Signature
-            </Button>
-            <Button
-              onClick={handleDownloadPdf}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all cursor-pointer"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-            <Button
-              onClick={handleSaveConversation}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all cursor-pointer"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Version
-            </Button>
-          </div>
-
-
         </div>
       </div>
 
-      {/* Right Sidebar - Comments */}
-      <div className={`${commentsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-l border-border flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
-        {commentsSidebarOpen && mongoConversationId && (
+      {/* Right Sidebar - Tabbed Comments & Versions */}
+      <div className={`${rightSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-l border-border flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
+        {rightSidebarOpen && mongoConversationId && (
           <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-primary" />
-                <span className="text-foreground font-semibold text-sm">Comments</span>
+            {/* Sidebar Tab Header */}
+            <div className="p-2 border-b border-border flex items-center justify-between flex-shrink-0 bg-muted/20">
+              <div className="flex gap-1 bg-muted p-1 rounded-lg">
+                <button
+                  onClick={() => setRightSidebarTab('comments')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    rightSidebarTab === 'comments'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Comments
+                </button>
+                <button
+                  onClick={() => setRightSidebarTab('versions')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    rightSidebarTab === 'versions'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Versions
+                </button>
               </div>
               <button
-                onClick={() => setCommentsSidebarOpen(false)}
-                className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer"
+                onClick={() => setRightSidebarOpen(false)}
+                className="p-1.5 hover:bg-muted rounded-lg transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                title="Close sidebar"
               >
-                <X className="w-4 h-4 text-muted-foreground" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <CommentList documentId={mongoConversationId} />
+
+            {/* Sidebar Tab Content */}
+            <div className="flex-grow overflow-hidden flex flex-col">
+              {rightSidebarTab === 'comments' ? (
+                <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
+                  <CommentList documentId={mongoConversationId} />
+                </div>
+              ) : (
+                <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col">
+                  <VersionsSidebar
+                    conversationId={mongoConversationId}
+                    onSelectVersion={handleSelectVersion}
+                    onClose={() => setRightSidebarOpen(false)}
+                    currentVersion={currentVersion}
+                    onDeleteVersion={handleDeleteVersion}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Right Sidebar - Versions */}
-      <div className={`${isVersionsSidebarOpen ? 'translate-x-0 w-80 opacity-100' : 'translate-x-full max-w-0 opacity-0 pointer-events-none'} transition-all duration-300 bg-card border-l border-border flex flex-col absolute right-0 z-20 overflow-hidden h-full`}>
-        <VersionsSidebar
-          conversationId={mongoConversationId}
-          onSelectVersion={handleSelectVersion}
-          onClose={() => setIsVersionsSidebarOpen(false)}
-          currentVersion={currentVersion}
-          onDeleteVersion={handleDeleteVersion} // Pass the delete function
-        />
       </div>
 
       {isShareModalOpen && (
