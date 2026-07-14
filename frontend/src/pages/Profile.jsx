@@ -415,7 +415,7 @@ const Profile = () => {
         {/* Twitter-style Profile Header */}
         <div className="bg-card border border-border border-b-0 rounded-t-xl overflow-hidden">
           {/* Cover Photo */}
-          <div className="h-48 sm:h-56 relative group">
+          <div className="h-32 sm:h-48 md:h-56 relative group">
             {profileData.cover_photo || previewCoverImage ? (
               <img 
                 src={previewCoverImage || profileData.cover_photo} 
@@ -446,11 +446,11 @@ const Profile = () => {
           </div>
 
           {/* Avatar + Info Row */}
-          <div className="px-4 sm:px-8 pb-6 relative">
+          <div className="px-4 sm:px-6 md:px-8 pb-4 md:pb-6 relative">
             {/* Avatar - pulled up to overlap cover */}
-            <div className="relative -mt-16 mb-3 flex items-end justify-between">
+            <div className="relative -mt-10 sm:-mt-12 md:-mt-16 mb-3 flex items-end justify-between">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full bg-background border-4 border-card overflow-hidden">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-background border-4 border-card overflow-hidden">
                   {displayImage ? (
                     <img 
                       src={displayImage} 
@@ -509,7 +509,7 @@ const Profile = () => {
 
             {/* Name + Username */}
             <div>
-              <h1 className="text-xl font-bold text-foreground leading-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight">
                 {profileData.name || 'Not provided'}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -520,10 +520,10 @@ const Profile = () => {
         </div>
 
         {/* Tabbed Settings Layout */}
-        <div className="flex flex-col md:flex-row gap-4 mt-4 px-0 sm:px-0">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 mt-3 md:mt-4 px-0 sm:px-0">
           {/* Left: Tab Navigation */}
-          <nav className="w-full md:w-64 flex-shrink-0">
-            <div className="bg-card border border-border rounded-xl p-2 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+          <nav className="w-full md:w-64 flex-shrink-0 sticky top-[var(--navbar-height)] z-20">
+            <div className="bg-card border border-border rounded-xl p-2 flex md:flex-col gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.key;
@@ -532,7 +532,7 @@ const Profile = () => {
                     key={item.key}
                     onClick={() => switchTab(item.key)}
                     className={
-                      "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-left flex-shrink-0 " +
+                      "flex items-center justify-center md:w-full gap-0 md:gap-3 px-3 md:px-4 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-medium transition-colors text-left flex-shrink-0 " +
                       (item.destructive
                         ? (isActive
                             ? "bg-destructive/10 text-destructive"
@@ -543,7 +543,7 @@ const Profile = () => {
                     }
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{item.label}</span>
+                    <span className="hidden md:inline truncate">{item.label}</span>
                   </button>
                 );
               })}
@@ -713,153 +713,171 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  {stats && (
-                    <div className="pt-6 border-t border-border space-y-4">
-                      <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-primary" />
-                        Activity Overview
-                      </h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-muted rounded-xl p-4 text-center">
-                          <p className="text-2xl font-bold text-foreground">{stats.documents_analyzed_count}</p>
-                          <p className="text-xs text-muted-foreground">Documents Analyzed</p>
-                        </div>
-                        <div className="bg-muted rounded-xl p-4 text-center">
-                          <p className="text-2xl font-bold text-foreground">{stats.documents_created_count}</p>
-                          <p className="text-xs text-muted-foreground">Documents Created</p>
-                        </div>
-                        <div className="bg-muted rounded-xl p-4 text-center">
-                          <p className="text-2xl font-bold text-foreground">{stats.lawyer_consultations_count}</p>
-                          <p className="text-xs text-muted-foreground">Lawyer Consultations</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Professional Details - Lawyers Only */}
-                  {user.role === 'lawyer' && lawyerProfile && (
-                    <div className="pt-6 border-t border-border space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-primary" />
-                          Professional Details
-                        </h3>
-                        {hasLawyerChanges && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={handleCancelLawyerProfile}
-                              disabled={lawyerProfileSaving}
-                              className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={handleSaveLawyerProfile}
-                              disabled={lawyerProfileSaving}
-                              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                              title="Save"
-                            >
-                              {lawyerProfileSaving ? (
-                                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                              ) : (
-                                <Check className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Bio</label>
-                          <textarea
-                            name="bio"
-                            value={lawyerProfile.bio}
-                            onChange={handleLawyerInputChange}
-                            rows={3}
-                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
-                            placeholder="Tell clients about yourself..."
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Law Firm</label>
-                            <input
-                              type="text"
-                              name="law_firm"
-                              value={lawyerProfile.law_firm}
-                              onChange={handleLawyerInputChange}
-                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                              placeholder="e.g. Smith & Associates"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Education</label>
-                            <input
-                              type="text"
-                              name="education"
-                              value={lawyerProfile.education}
-                              onChange={handleLawyerInputChange}
-                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                              placeholder="e.g. LLB, National Law School"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Years of Experience</label>
-                            <input
-                              type="number"
-                              name="experience_years"
-                              value={lawyerProfile.experience_years}
-                              onChange={handleLawyerInputChange}
-                              min="0"
-                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-foreground">Consultation Fee</label>
-                            <input
-                              type="text"
-                              name="consultation_fee"
-                              value={lawyerProfile.consultation_fee}
-                              onChange={handleLawyerInputChange}
-                              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                              placeholder="e.g. ₹2000/hr"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Specializations</label>
-                          <input
-                            type="text"
-                            name="specializations"
-                            value={Array.isArray(lawyerProfile.specializations) ? lawyerProfile.specializations.join(', ') : lawyerProfile.specializations}
-                            onChange={(e) => setLawyerProfile({ ...lawyerProfile, specializations: e.target.value })}
-                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                            placeholder="e.g. Family Law, Criminal Law, Corporate Law"
-                          />
-                          <p className="text-xs text-muted-foreground">Separate multiple specializations with commas</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
               {activeTab === 'professional' && (
-                <div className="py-12 text-center">
-                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-primary" />
+                      Professional Details
+                    </h2>
+                    {hasLawyerChanges && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleCancelLawyerProfile}
+                          disabled={lawyerProfileSaving}
+                          className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-foreground transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleSaveLawyerProfile}
+                          disabled={lawyerProfileSaving}
+                          className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          title="Save"
+                        >
+                          {lawyerProfileSaving ? (
+                            <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {user.role === 'lawyer' && lawyerProfile ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Bio</label>
+                        <textarea
+                          name="bio"
+                          value={lawyerProfile.bio}
+                          onChange={handleLawyerInputChange}
+                          rows={3}
+                          className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                          placeholder="Tell clients about yourself..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Law Firm</label>
+                          <input
+                            type="text"
+                            name="law_firm"
+                            value={lawyerProfile.law_firm}
+                            onChange={handleLawyerInputChange}
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            placeholder="e.g. Smith & Associates"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Education</label>
+                          <input
+                            type="text"
+                            name="education"
+                            value={lawyerProfile.education}
+                            onChange={handleLawyerInputChange}
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            placeholder="e.g. LLB, National Law School"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Years of Experience</label>
+                          <input
+                            type="number"
+                            name="experience_years"
+                            value={lawyerProfile.experience_years}
+                            onChange={handleLawyerInputChange}
+                            min="0"
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Consultation Fee</label>
+                          <input
+                            type="text"
+                            name="consultation_fee"
+                            value={lawyerProfile.consultation_fee}
+                            onChange={handleLawyerInputChange}
+                            className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                            placeholder="e.g. ₹2000/hr"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Specializations</label>
+                        <input
+                          type="text"
+                          name="specializations"
+                          value={Array.isArray(lawyerProfile.specializations) ? lawyerProfile.specializations.join(', ') : lawyerProfile.specializations}
+                          onChange={(e) => setLawyerProfile({ ...lawyerProfile, specializations: e.target.value })}
+                          className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          placeholder="e.g. Family Law, Criminal Law, Corporate Law"
+                        />
+                        <p className="text-xs text-muted-foreground">Separate multiple specializations with commas</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center">
+                      <Briefcase className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">Professional details are available for lawyer accounts.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
               {activeTab === 'activity' && (
-                <div className="py-12 text-center">
-                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                <div className="space-y-6">
+                  <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Activity
+                  </h2>
+
+                  {stats ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-muted rounded-xl p-5 text-center">
+                        <p className="text-3xl font-bold text-foreground">{stats.documents_analyzed_count}</p>
+                        <p className="text-sm text-muted-foreground mt-1">Documents Analyzed</p>
+                      </div>
+                      <div className="bg-muted rounded-xl p-5 text-center">
+                        <p className="text-3xl font-bold text-foreground">{stats.documents_created_count}</p>
+                        <p className="text-sm text-muted-foreground mt-1">Documents Created</p>
+                      </div>
+                      <div className="bg-muted rounded-xl p-5 text-center">
+                        <p className="text-3xl font-bold text-foreground">{stats.lawyer_consultations_count}</p>
+                        <p className="text-sm text-muted-foreground mt-1">Lawyer Consultations</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center">
+                      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3"></div>
+                      <p className="text-muted-foreground text-sm">Loading activity...</p>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-border">
+                    <h3 className="text-sm font-medium text-foreground mb-3">Quick Links</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <a href="/document-analyser" className="px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm font-medium text-foreground transition-colors">
+                        Analyze a Document
+                      </a>
+                      <a href="/document-creation" className="px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm font-medium text-foreground transition-colors">
+                        Create a Document
+                      </a>
+                      <a href="/my-documents" className="px-4 py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg text-sm font-medium text-foreground transition-colors">
+                        My Documents
+                      </a>
+                    </div>
+                  </div>
                 </div>
               )}
 

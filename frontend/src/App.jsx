@@ -19,6 +19,14 @@ import MyDocuments from "./pages/MyDocuments";
 import DocumentCreation from "./pages/DocumentCreation";
 import SharedDocumentView from "./pages/SharedDocumentView";
 import About from "./pages/About";
+import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
+import Security from "./pages/Security";
+import Blog from "./pages/Blog";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Disclaimer from "./pages/Disclaimer";
 import ChatList from "./pages/ChatList";
 import Chat from "./pages/Chat";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -41,6 +49,14 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
           <Route
             path="/document-analyser"
             element={(

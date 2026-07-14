@@ -459,23 +459,32 @@ export default function Navbar() {
         
         {/* Profile section in Sidebar */}
         {isAuthenticated && user && (
-          <Link 
-            to="/profile" 
-            className="p-5 border-b border-border/40 bg-muted/40 hover:bg-muted/80 flex items-center gap-3 flex-shrink-0 transition-colors duration-200"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            {user.profile_picture ? (
-              <img src={user.profile_picture} alt="Profile" className="w-11 h-11 rounded-full border-2 border-primary/50 shadow-inner" />
-            ) : (
-              <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-primary font-bold text-lg">
-                {user.email ? user.email[0].toUpperCase() : 'U'}
+          <div className="p-5 border-b border-border/40 bg-muted/40 flex items-center gap-3 flex-shrink-0">
+            <Link 
+              to="/profile" 
+              className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {user.profile_picture ? (
+                <img src={user.profile_picture} alt="Profile" className="w-11 h-11 rounded-full border-2 border-primary/50 shadow-inner flex-shrink-0" />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-primary font-bold text-lg flex-shrink-0">
+                  {user.email ? user.email[0].toUpperCase() : 'U'}
+                </div>
+              )}
+              <div className="min-w-0 flex-grow">
+                <p className="text-sm font-semibold text-foreground truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user.role || 'User'}</p>
               </div>
-            )}
-            <div className="min-w-0 flex-grow">
-              <p className="text-sm font-semibold text-foreground truncate">{user.email}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role || 'User'}</p>
-            </div>
-          </Link>
+            </Link>
+            <button
+              onClick={() => { logout(); setIsMenuOpen(false); }}
+              className="p-2.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors duration-200 flex-shrink-0"
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         )}
 
         {/* List of links - Spaced out and non-scrolling */}
@@ -513,16 +522,7 @@ export default function Navbar() {
 
         {/* Footer / Auth actions in Sidebar */}
         <div className="p-4 border-t border-border flex-shrink-0 bg-muted/20">
-          {isAuthenticated ? (
-            <Button 
-              onClick={() => { logout(); setIsMenuOpen(false); }} 
-              variant="destructive" 
-              className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all duration-150 h-11 rounded-lg text-sm"
-            >
-              <LogOut size={16} className="mr-2 flex-shrink-0" />
-              <span className="truncate">Logout</span>
-            </Button>
-          ) : (
+          {!isAuthenticated && (
             <Link to="/login" onClick={() => setIsMenuOpen(false)}>
               <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all h-11 rounded-xl font-medium">
                 Login

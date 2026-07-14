@@ -652,19 +652,19 @@ export default function Home() {
                 <h4 className="text-sm font-bold text-foreground mb-4">Product</h4>
                 <ul className="space-y-2">
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/features" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Features
-                    </span>
+                    </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/pricing" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Pricing
-                    </span>
+                    </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/security" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Security
-                    </span>
+                    </Link>
                   </li>
                 </ul>
               </div>
@@ -678,14 +678,14 @@ export default function Home() {
                     </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/blog" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Blog
-                    </span>
+                    </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/contact" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Contact
-                    </span>
+                    </Link>
                   </li>
                 </ul>
               </div>
@@ -694,19 +694,19 @@ export default function Home() {
                 <h4 className="text-sm font-bold text-foreground mb-4">Legal</h4>
                 <ul className="space-y-2">
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/privacy" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Privacy
-                    </span>
+                    </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/terms" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Terms
-                    </span>
+                    </Link>
                   </li>
                   <li>
-                    <span className="text-xs text-muted-foreground hover:text-primary transition cursor-default">
+                    <Link to="/disclaimer" className="text-xs text-muted-foreground hover:text-primary transition cursor-pointer">
                       Disclaimer
-                    </span>
+                    </Link>
                   </li>
                 </ul>
               </div>
