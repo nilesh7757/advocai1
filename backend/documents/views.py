@@ -28,8 +28,23 @@ def create_conversation_with_chat(request):
         return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
+        # Extract and format conversation history if provided in payload
+        history_payload = request.data.get('conversation_history', []) or request.data.get('messages', [])
+        conversation_history = []
+        for msg in history_payload:
+            if isinstance(msg, dict):
+                sender = msg.get('sender') or msg.get('role')
+                role = 'user' if sender == 'user' else 'assistant'
+                text = msg.get('text') or msg.get('content', '')
+                conversation_history.append({'role': role, 'content': text})
+
         # Generate AI response for the initial message
-        ai_raw_response = get_gemini_response(message, initial_document_content, preferred_jurisdiction=jurisdiction)
+        ai_raw_response = get_gemini_response(
+            message,
+            initial_document_content,
+            conversation_history=conversation_history,
+            preferred_jurisdiction=jurisdiction
+        )
         
         # Parse the AI response to extract document content
         ai_response_content = ""
@@ -110,8 +125,23 @@ def send_chat_message(request, pk):
         return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
+        # Extract and format conversation history from database
+        history_raw = conversation.get('messages', [])
+        conversation_history = []
+        for msg in history_raw:
+            role = 'user' if msg.get('sender') == 'user' else 'assistant'
+            conversation_history.append({
+                'role': role,
+                'content': msg.get('text', '')
+            })
+
         # Generate AI response
-        ai_raw_response = get_gemini_response(message, document_content, preferred_jurisdiction=jurisdiction)
+        ai_raw_response = get_gemini_response(
+            message,
+            document_content,
+            conversation_history=conversation_history,
+            preferred_jurisdiction=jurisdiction
+        )
 
         # Parse the AI response to extract document content
         ai_response_content = document_content if document_content else ""

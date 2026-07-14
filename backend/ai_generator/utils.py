@@ -161,6 +161,81 @@ def get_disclaimer(jurisdiction: str) -> str:
 """
 
 
+def find_question_prompt_index(messages: List[Dict]) -> int:
+    """
+    Finds the index of the last assistant message that was a question-gathering prompt.
+    Returns the index, or -1 if not found.
+    """
+    for i in range(len(messages) - 2, -1, -1):
+        msg = messages[i]
+        if isinstance(msg, dict) and msg.get("role") == "assistant":
+            content = msg.get("content", "")
+            if "please provide ALL" in content or "please provide all" in content.lower():
+                return i
+    return -1
+
+
+def extract_document_type_from_prompt(prompt_text: str) -> str:
+    """
+    Extracts the document type from the question prompt.
+    E.g. from "To create your Non-Disclosure Agreement (NDA), please provide..."
+    Returns the document type name, or a default fallback.
+    """
+    match = re.search(r"To create your\s+([^,(\n]+)", prompt_text, re.IGNORECASE)
+    if match:
+        doc_type = match.group(1).strip()
+        doc_type = re.sub(r"\s+please\s+provide.*$", "", doc_type, flags=re.IGNORECASE).strip()
+        return doc_type
+    return "Legal Document"
+
+
+def validate_information_sufficiency(document_type: str, user_info: str) -> Dict[str, Any]:
+    """
+    Calls the LLM to assess if the provided information is sufficient to generate a draft.
+    """
+    model = get_llm()
+    
+    prompt = f"""You are a legal document drafting assistant.
+    Assess whether the user's provided information is sufficient to draft a reasonable first draft of a {document_type}.
+    At a minimum, a reasonable first draft requires:
+    1. Party name(s)
+    2. At least one key term/date/amount relevant to {document_type} (e.g. for NDA: purpose/duration, for Rental Agreement: rent amount/property address, etc.)
+    
+    If the user explicitly requested "use placeholders" or similar, or if they provided minimal necessary details (even if not perfectly complete, since we can use placeholders like [DATE] or [AMOUNT] for anything genuinely unspecified), you should consider it SUFFICIENT.
+    
+    User-provided information so far:
+    ---
+    {user_info}
+    ---
+    
+    Respond in JSON format:
+    {{
+        "sufficient": true/false,
+        "missing": ["list of specifically missing critical items, if any"]
+    }}
+    """
+    
+    try:
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2,
+                max_output_tokens=250,
+            )
+        )
+        response_text = response.candidates[0].content.parts[0].text
+        result = extract_json_from_response(response_text)
+        if result:
+            return {
+                "sufficient": result.get("sufficient", True),
+                "missing": result.get("missing", [])
+            }
+    except Exception as e:
+        print(f"Error in validation LLM call: {e}")
+    
+    return {"sufficient": True, "missing": []}
+
+
 # ============================================================================
 # GRAPH NODES - Each node represents a step in the workflow
 # ============================================================================
@@ -188,6 +263,17 @@ def intent_classification_node(state: ConversationState) -> ConversationState:
         state["next_step"] = "generate_document"
         return state
     
+    # Check if we are in the middle of gathering info
+    prompt_idx = find_question_prompt_index(state["messages"])
+    if prompt_idx != -1:
+        prompt_text = state["messages"][prompt_idx].get("content", "")
+        doc_type = extract_document_type_from_prompt(prompt_text)
+        
+        state["current_intent"] = "document_generation"
+        state["document_type"] = doc_type
+        state["next_step"] = "route_intent"
+        return state
+
     classification_prompt = f"""You are an intent classifier. Analyze this user query and classify the intent.
 
 User Query: "{user_query}"
@@ -228,6 +314,16 @@ def feasibility_check_node(state: ConversationState) -> ConversationState:
     Node 2: Checks if the document request is feasible.
     Rejects overly complex documents like international mergers.
     """
+    # Check if we are in the middle of gathering info
+    prompt_idx = find_question_prompt_index(state["messages"])
+    if prompt_idx != -1:
+        prompt_text = state["messages"][prompt_idx].get("content", "")
+        doc_type = extract_document_type_from_prompt(prompt_text)
+        state["is_feasible"] = True
+        state["document_type"] = doc_type
+        state["next_step"] = "gather_info"
+        return state
+
     model = get_llm()
     
     last_message = state["messages"][-1]
@@ -506,41 +602,73 @@ def get_document_questions(document_type: str) -> str:
 
 def information_gathering_node(state: ConversationState) -> ConversationState:
     """
-    Node 3: Asks the user for necessary information ALL AT ONCE.
-    Single-turn question asking, then proceeds directly to generation.
+    Node 3: Asks the user for necessary information.
+    Uses stateless conversation history traversal to gather/validate details.
     """
-    # Check if user wants a blank template
     last_user_msg = state["messages"][-1]
     user_text = last_user_msg.get("content", "") if isinstance(last_user_msg, dict) else str(last_user_msg)
     
+    # Check if user wants a blank template
     if any(phrase in user_text.lower() for phrase in ["blank template", "fill it myself", "i'll fill", "leave blank", "just give me"]):
         state["user_wants_template"] = True
         state["needs_more_info"] = False
         state["next_step"] = "generate_document"
         return state
+
+    # Find if we have already sent the question prompt
+    prompt_idx = find_question_prompt_index(state["messages"])
     
-    # Check if this is the first time (we haven't asked questions yet)
-    if not state.get("gathered_info"):
-        # First time - ask ALL questions at once using predefined template
+    if prompt_idx == -1:
+        # First time - send the question prompt
         state["gathered_info"] = {}
-        
-        # Get comprehensive questions for this document type
         questions = get_document_questions(state['document_type'])
-        
         state["messages"].append({"role": "assistant", "content": questions})
         state["needs_more_info"] = True
         state["next_step"] = "wait_for_user"
     else:
-        # Second time - user has provided answers, store them and proceed to generation
-        user_response = user_text
+        # We have already asked the questions. Let's gather all user responses since that prompt
+        user_answers = []
+        for msg in state["messages"][prompt_idx + 1:]:
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                user_answers.append(msg.get("content", ""))
+        cumulative_answers = "\n".join(user_answers)
         
-        # Store all the user's response
-        state["gathered_info"]["complete_response"] = user_response
+        # Also check if they mentioned wanting a template in their cumulative answers
+        if any(phrase in cumulative_answers.lower() for phrase in ["blank template", "fill it myself", "i'll fill", "leave blank", "just give me"]):
+            state["user_wants_template"] = True
+            state["needs_more_info"] = False
+            state["next_step"] = "generate_document"
+            return state
+            
+        # Store in state for document generation
+        state["gathered_info"] = {
+            "complete_response": cumulative_answers
+        }
         
-        # Always proceed to document generation after receiving user's response
-        state["needs_more_info"] = False
-        state["next_step"] = "generate_document"
-    
+        # Check follow-up round count
+        follow_up_count = 0
+        for msg in state["messages"][prompt_idx + 1:]:
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                follow_up_count += 1
+                
+        # Validate information sufficiency
+        validation = validate_information_sufficiency(state['document_type'], cumulative_answers)
+        
+        if validation.get("sufficient", True) or follow_up_count >= 2:
+            # Info is sufficient, or we reached max follow-up rounds limit: proceed to generation
+            state["needs_more_info"] = False
+            state["next_step"] = "generate_document"
+        else:
+            # Info is NOT sufficient, and we are under the limit: ask follow-up questions
+            missing_items = validation.get("missing", [])
+            missing_str = ", ".join(missing_items) if missing_items else "some key details"
+            
+            follow_up_message = f"Thanks! I have recorded your details. To draft this {state['document_type']} I still need: {missing_str}. You can also just say 'use placeholders for the rest' and I'll fill in reasonable defaults."
+            
+            state["messages"].append({"role": "assistant", "content": follow_up_message})
+            state["needs_more_info"] = True
+            state["next_step"] = "wait_for_user"
+            
     return state
 
 
