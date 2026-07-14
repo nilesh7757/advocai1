@@ -7,11 +7,13 @@ from .views import (
     lawyer_connection_update_view,
     withdraw_connection_view,
     connection_requests_list_view,
+    update_lawyer_availability_view,
 )
 
 urlpatterns = [
     path('', lawyer_list_view, name='lawyer_list'),
     path('dashboard/', lawyer_dashboard_view, name='lawyer_dashboard'),
+    path('availability/', update_lawyer_availability_view, name='update_lawyer_availability'),
     path('connections/', connection_requests_list_view, name='connection_requests_list'),
     path('<str:lawyer_id>/', lawyer_detail_view, name='lawyer_detail'),
     path('<str:lawyer_id>/connect/', connect_with_lawyer_view, name='connect_lawyer'),

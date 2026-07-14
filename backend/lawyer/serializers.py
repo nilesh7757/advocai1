@@ -18,6 +18,7 @@ class LawyerProfileSerializer(serializers.Serializer):
     bio = serializers.CharField(read_only=True)
     verification_status = serializers.CharField(read_only=True)
     verification_notes = serializers.CharField(read_only=True)
+    availability = serializers.JSONField(required=False)
 
 
 class LawyerConnectionRequestSerializer(serializers.Serializer):
@@ -28,6 +29,7 @@ class LawyerConnectionRequestSerializer(serializers.Serializer):
     lawyer = UserSerializer(read_only=True)
     message = serializers.CharField(required=False, allow_blank=True)
     status = serializers.CharField(read_only=True)
+    request_type = serializers.CharField(required=False, default='consultation')
     preferred_contact_method = serializers.CharField(required=False, allow_blank=True)
     preferred_contact_value = serializers.CharField(required=False, allow_blank=True)
     preferred_time = serializers.DateTimeField(required=False, allow_null=True)

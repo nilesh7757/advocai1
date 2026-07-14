@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/Components/ui/button";
 import { useAuth } from "../context/AuthContext";
 import ConnectModal from "../Components/ConnectModal";
+import QuoteModal from "../Components/QuoteModal";
 
 const LawyerProfile = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const LawyerProfile = () => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -73,6 +75,23 @@ const LawyerProfile = () => {
       toast.error(err.response?.data?.error || "Unable to send connection request.");
     } finally {
       setIsModalOpen(false);
+    }
+  };
+
+  const handleQuote = async ({ message, preferredContact }) => {
+    if (!profileData?.user?.id) return;
+    try {
+      const response = await axios.post(`api/lawyer/${profileData.user.id}/connect/`, {
+        message: message || '',
+        preferred_contact_method: preferredContact?.includes('@') ? 'email' : 'phone',
+        preferred_contact_value: preferredContact || user?.email || '',
+        request_type: 'quote',
+      });
+      toast.success(response.data.message || 'Quote request sent!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Unable to send quote request.');
+    } finally {
+      setIsQuoteOpen(false);
     }
   };
 
@@ -148,9 +167,16 @@ const LawyerProfile = () => {
               ) : null}
             </div>
 
-            <div className="mt-4 flex flex-col items-center justify-center">
-              <Button onClick={openConnectModal} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Button onClick={openConnectModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 Connect with {lawyerUser?.name || 'Lawyer'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsQuoteOpen(true)}
+                className="text-foreground border-border hover:bg-card hover:border-primary/40"
+              >
+                Request a Quote
               </Button>
               
               {/* Connection Stats */}
@@ -243,6 +269,14 @@ const LawyerProfile = () => {
           onOpenChange={setIsModalOpen}
           lawyer={profileData}
           onConnect={handleConnect}
+        />
+      )}
+      {profileData && (
+        <QuoteModal
+          isOpen={isQuoteOpen}
+          onOpenChange={setIsQuoteOpen}
+          lawyer={profileData}
+          onSubmit={handleQuote}
         />
       )}
     </>

@@ -7,6 +7,7 @@ from mongoengine import (
     ReferenceField,
     ListField,
     IntField,
+    DictField,
     CASCADE,
 )
 from django.contrib.auth.hashers import make_password, check_password
@@ -153,6 +154,7 @@ class LawyerProfile(Document):
     )
     verification_notes = StringField(default='')
     verified_at = DateTimeField()
+    availability = ListField(DictField(), default=list)
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -178,7 +180,12 @@ class LawyerConnectionRequest(Document):
     status = StringField(
         max_length=32,
         default='pending',
-        choices=('pending', 'accepted', 'declined'),
+        choices=('pending', 'accepted', 'declined', 'withdrawn'),
+    )
+    request_type = StringField(
+        max_length=32,
+        default='consultation',
+        choices=('consultation', 'quote'),
     )
     preferred_contact_method = StringField(max_length=32, default='email')
     preferred_contact_value = StringField(max_length=255, default='')

@@ -377,6 +377,7 @@ class LawyerProfileSerializer(serializers.Serializer):
     bio = serializers.CharField(read_only=True)
     verification_status = serializers.CharField(read_only=True)
     verification_notes = serializers.CharField(read_only=True)
+    availability = serializers.JSONField(required=False)
 
     def to_representation(self, instance):
         user_data = UserSerializer(instance.user).data if instance.user else None
@@ -395,6 +396,7 @@ class LawyerProfileSerializer(serializers.Serializer):
             "verification_status": instance.verification_status,
             "verification_notes": instance.verification_notes,
             "verification_documents": instance.verification_documents,
+            "availability": getattr(instance, "availability", []),
         }
 
 
@@ -406,6 +408,7 @@ class LawyerConnectionRequestSerializer(serializers.Serializer):
     lawyer = UserSerializer(read_only=True)
     message = serializers.CharField(required=False, allow_blank=True)
     status = serializers.CharField(read_only=True)
+    request_type = serializers.CharField(required=False, default='consultation')
     preferred_contact_method = serializers.CharField(required=False, allow_blank=True)
     preferred_contact_value = serializers.CharField(required=False, allow_blank=True)
     preferred_time = serializers.DateTimeField(required=False, allow_null=True)

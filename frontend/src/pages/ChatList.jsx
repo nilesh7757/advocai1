@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const ChatList = () => {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const prevRequestsRef = useRef([]);
 
   useEffect(() => {
     loadAllItems();
@@ -28,6 +29,24 @@ const ChatList = () => {
 
       const conversations = (convResponse.data.results || []).map(c => ({ ...c, type: 'conversation' }));
       const requests = (reqResponse.data || []).map(r => ({ ...r, type: 'request' }));
+
+      // Compare status transitions to show toasts
+      if (prevRequestsRef.current.length > 0) {
+        requests.forEach(req => {
+          const prev = prevRequestsRef.current.find(p => p.id === req.id);
+          if (prev && prev.status !== req.status) {
+            const lawyerName = req.lawyer?.name || req.lawyer?.username || 'the lawyer';
+            const isQuote = req.request_type === 'quote';
+            const typeLabel = isQuote ? 'quote request' : 'connection request';
+            if (req.status === 'accepted') {
+              toast.success(`Your ${typeLabel} to ${lawyerName} was accepted!`, { icon: '🎉' });
+            } else if (req.status === 'declined') {
+              toast.error(`Your ${typeLabel} to ${lawyerName} was declined.`);
+            }
+          }
+        });
+      }
+      prevRequestsRef.current = requests;
 
       const combined = [...conversations, ...requests].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
       setItems(combined);
@@ -60,99 +79,192 @@ const ChatList = () => {
     );
   }
 
+  const activeConversations = items.filter(item => item.type === 'conversation');
+  const pendingRequests = items.filter(item => item.type === 'request' && item.status === 'pending');
+  const pastRequests = items.filter(item => item.type === 'request' && (item.status === 'declined' || item.status === 'withdrawn' || item.status === 'rejected'));
+
   return (
     <div className="container mx-auto py-10 animate-fade-in">
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-blue-500/10 rounded-full border border-blue-500/20">
-          <span className="text-blue-400 text-xs font-medium">Messages & Requests</span>
+      <div className="text-center mb-10 select-none">
+        <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+          <span className="text-primary text-xs font-medium">Messages & Requests</span>
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
-          Your Communications
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
+          My Consultations
         </h1>
-        <p className="text-gray-400 max-w-2xl mx-auto">
-          Active chats and pending connection requests.
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Your lawyer connections and conversations in one place.
         </p>
       </div>
 
       {items.length === 0 ? (
-        <Card className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50">
+        <Card className="bg-card border-border">
           <CardContent className="p-10 text-center">
-            <MessageSquare className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-400">No items to show.</p>
-            <p className="text-gray-500 text-sm mt-2">
+            <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No consultations or conversations to show.</p>
+            <p className="text-muted-foreground/60 text-sm mt-2">
               Connect with a lawyer to start a conversation.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {items.map((item) => {
-            if (item.type === 'conversation') {
-              const otherUser = item.client?.id === user?.id ? item.lawyer : item.client;
-              return (
-                <Card
-                  key={`conv-${item.id}`}
-                  className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 hover:border-gray-600 transition-all duration-200 cursor-pointer"
-                  onClick={() => navigate(`/chat/${item.id}`)}
-                >
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-12 h-12 bg-blue-600/20 border border-blue-500/30 rounded-full flex items-center justify-center">
-                        <span className="text-blue-400 font-semibold">
-                          {otherUser?.name?.split(' ').map(n => n[0]).join('') || otherUser?.username?.slice(0, 2).toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{otherUser?.name || otherUser?.username || 'Unknown User'}</h3>
-                        <p className="text-gray-400 text-sm truncate">
-                          {item.last_message ? (item.last_message.message_type === 'document' ? `📄 ${item.last_message.document_title || 'Document'}` : item.last_message.message) : 'No messages yet'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {item.unread_count > 0 && (
-                        <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                          {item.unread_count}
-                        </span>
-                      )}
-                      <ArrowRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            } else if (item.type === 'request' && item.status === 'pending') {
-              const lawyer = item.lawyer;
-              return (
-                <Card
-                  key={`req-${item.id}`}
-                  className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50"
-                >
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-12 h-12 bg-yellow-600/20 border border-yellow-500/30 rounded-full flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-yellow-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">Request to {lawyer?.name || lawyer?.username}</h3>
-                        <p className="text-yellow-400 text-sm">Status: {item.status}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleWithdraw(item.id);
-                      }}
+        <div className="space-y-8 select-none">
+          {/* Active Conversations Section */}
+          {activeConversations.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <h2 className="text-lg font-bold text-foreground">Active Conversations</h2>
+                <span className="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {activeConversations.length}
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {activeConversations.map((item) => {
+                  const otherUser = item.client?.id === user?.id ? item.lawyer : item.client;
+                  return (
+                    <Card
+                      key={`conv-${item.id}`}
+                      className="bg-card border-border hover:border-primary/60 transition-all duration-200 cursor-pointer"
+                      onClick={() => navigate(`/chat/${item.id}`)}
                     >
-                      Withdraw
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            }
-            return null;
-          })}
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                          <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary font-semibold text-sm">
+                              {otherUser?.name?.split(' ').map(n => n[0]).join('') || otherUser?.username?.slice(0, 2).toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                          <div className="flex-1 overflow-hidden">
+                            <h3 className="text-foreground font-semibold text-sm">{otherUser?.name || otherUser?.username || 'Unknown User'}</h3>
+                            <p className="text-muted-foreground text-xs truncate">
+                              {item.last_message ? (item.last_message.message_type === 'document' ? `📄 ${item.last_message.document_title || 'Document'}` : item.last_message.message) : 'No messages yet'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          {item.unread_count > 0 && (
+                            <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                              {item.unread_count}
+                            </span>
+                          )}
+                          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Requests Section */}
+          {pendingRequests.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <h2 className="text-lg font-bold text-foreground">Pending Requests</h2>
+                <span className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {pendingRequests.length}
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {pendingRequests.map((item) => {
+                  const targetUser = item.lawyer;
+                  const isQuote = item.request_type === 'quote';
+                  return (
+                    <Card
+                      key={`req-${item.id}`}
+                      className="bg-card border-border"
+                    >
+                      <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="text-foreground font-semibold text-sm">
+                              {isQuote ? 'Quote' : 'Consultation'} Request to {targetUser?.name || targetUser?.username}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="px-2 py-0.5 bg-muted text-muted-foreground text-[10px] font-semibold rounded uppercase">
+                                Pending
+                              </span>
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded uppercase">
+                                {isQuote ? 'Quote' : 'Consultation'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 text-xs cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWithdraw(item.id);
+                          }}
+                        >
+                          Withdraw
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Past Requests Section */}
+          {pastRequests.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <h2 className="text-lg font-bold text-foreground">Past Requests</h2>
+                <span className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {pastRequests.length}
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {pastRequests.map((item) => {
+                  const targetUser = item.lawyer;
+                  const isQuote = item.request_type === 'quote';
+                  const isWithdrawn = item.status === 'withdrawn';
+                  
+                  return (
+                    <Card
+                      key={`req-${item.id}`}
+                      className={`bg-card border-border ${isWithdrawn ? 'opacity-65' : ''}`}
+                    >
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 bg-muted/40 border border-border rounded-full flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <h3 className="text-foreground font-semibold text-sm">
+                              {isQuote ? 'Quote' : 'Consultation'} Request to {targetUser?.name || targetUser?.username}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              {item.status === 'declined' || item.status === 'rejected' ? (
+                                <span className="px-2 py-0.5 bg-destructive/10 text-destructive text-[10px] font-semibold rounded uppercase">
+                                  Declined
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-muted text-muted-foreground text-[10px] font-semibold rounded uppercase">
+                                  Withdrawn
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-semibold rounded uppercase">
+                                {isQuote ? 'Quote' : 'Consultation'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

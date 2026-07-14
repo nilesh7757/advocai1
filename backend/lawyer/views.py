@@ -99,13 +99,17 @@ def connect_with_lawyer_view(request, lawyer_id):
     if not profile:
         return Response({'error': 'Lawyer is not available for connections yet.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    request_type = request.data.get('request_type', 'consultation')
+    if request_type not in ('consultation', 'quote'):
+        request_type = 'consultation'
+
     existing_request = LawyerConnectionRequest.objects(
-        client=request.user, lawyer=lawyer, status='pending'
+        client=request.user, lawyer=lawyer, status='pending', request_type=request_type
     ).first()
     if existing_request:
         serializer = LawyerConnectionRequestSerializer(existing_request)
         return Response({
-            'message': 'You already have a pending connection request with this lawyer.',
+            'message': f'You already have a pending {request_type} request with this lawyer.',
             'request': serializer.data
         }, status=status.HTTP_200_OK)
 
@@ -129,6 +133,8 @@ def connect_with_lawyer_view(request, lawyer_id):
         client=request.user,
         lawyer=lawyer,
         message=message,
+        status='pending',
+        request_type=request_type,
         preferred_contact_method=preferred_method,
         preferred_contact_value=preferred_value,
         preferred_time=preferred_time,
@@ -278,3 +284,29 @@ def connection_requests_list_view(request):
     connection_requests = LawyerConnectionRequest.objects(client=user).order_by('-created_at')
     serializer = LawyerConnectionRequestSerializer(connection_requests, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_lawyer_availability_view(request):
+    """Let a lawyer update their own weekly availability"""
+    if not request.user.is_lawyer:
+        return Response({'error': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+        
+    profile = LawyerProfile.objects(user=request.user).first()
+    if not profile:
+        return Response({'error': 'Lawyer profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+    availability = request.data.get('availability')
+    if availability is None:
+        return Response({'error': 'Availability list is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    if not isinstance(availability, list):
+        return Response({'error': 'Availability must be a list of slot dictionaries.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    profile.availability = availability
+    profile.save()
+    
+    return Response({
+        'message': 'Availability updated successfully.',
+        'profile': LawyerProfileSerializer(profile).data
+    }, status=status.HTTP_200_OK)

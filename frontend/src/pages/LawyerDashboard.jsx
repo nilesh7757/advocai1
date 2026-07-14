@@ -5,7 +5,31 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/Card";
 import { Button } from "@/Components/ui/button";
-import { BadgeCheck, Clock, ShieldAlert, MessageSquare } from "lucide-react";
+import { Switch } from "@/Components/ui/switch";
+import { BadgeCheck, Clock, ShieldAlert, MessageSquare, CalendarDays } from "lucide-react";
+
+const DAYS = [
+  { key: 'monday',    label: 'Monday' },
+  { key: 'tuesday',   label: 'Tuesday' },
+  { key: 'wednesday', label: 'Wednesday' },
+  { key: 'thursday',  label: 'Thursday' },
+  { key: 'friday',    label: 'Friday' },
+  { key: 'saturday',  label: 'Saturday' },
+  { key: 'sunday',    label: 'Sunday' },
+];
+
+const defaultSlots = () => DAYS.map(d => ({ day: d.key, enabled: false, start_time: '09:00', end_time: '17:00' }));
+
+const buildSlotsFromProfile = (availability) => {
+  const map = {};
+  (availability || []).forEach(slot => { map[slot.day] = slot; });
+  return DAYS.map(d => ({
+    day: d.key,
+    enabled: !!map[d.key],
+    start_time: map[d.key]?.start_time || '09:00',
+    end_time:   map[d.key]?.end_time   || '17:00',
+  }));
+};
 
 const statusColors = {
   pending: "text-muted-foreground",
@@ -48,6 +72,8 @@ const LawyerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState(null);
+  const [slots, setSlots] = useState(defaultSlots());
+  const [savingAvail, setSavingAvail] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -61,6 +87,7 @@ const LawyerDashboard = () => {
       try {
         const response = await axios.get("api/lawyer/dashboard/");
         setDashboard(response.data);
+        setSlots(buildSlotsFromProfile(response.data?.profile?.availability));
       } catch (err) {
         console.error("Failed to load lawyer dashboard:", err);
         setError(err.response?.data?.error || "Unable to load lawyer dashboard.");
@@ -71,6 +98,29 @@ const LawyerDashboard = () => {
 
     loadDashboard();
   }, [user, navigate]);
+
+  const handleSlotToggle = (idx, enabled) => {
+    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, enabled } : s));
+  };
+
+  const handleSlotTime = (idx, field, value) => {
+    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  };
+
+  const handleSaveAvailability = async () => {
+    setSavingAvail(true);
+    try {
+      const payload = slots
+        .filter(s => s.enabled)
+        .map(({ day, start_time, end_time }) => ({ day, start_time, end_time }));
+      await axios.patch('api/lawyer/availability/', { availability: payload });
+      toast.success('Availability saved!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save availability.');
+    } finally {
+      setSavingAvail(false);
+    }
+  };
 
   const handleConnectionUpdate = async (requestId, status) => {
     try {
@@ -237,6 +287,76 @@ const LawyerDashboard = () => {
         </Card>
       )}
 
+      {/* Availability Editor */}
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <CalendarDays className="w-6 h-6 text-primary" />
+            <div>
+              <CardTitle className="text-foreground text-xl">Weekly Availability</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Set the days and hours when clients can book consultations.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {slots.map((slot, idx) => {
+              const dayLabel = DAYS[idx].label;
+              return (
+                <div key={slot.day} className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-3 w-40">
+                    <Switch
+                      id={`avail-${slot.day}`}
+                      checked={slot.enabled}
+                      onCheckedChange={(checked) => handleSlotToggle(idx, checked)}
+                    />
+                    <label
+                      htmlFor={`avail-${slot.day}`}
+                      className={`text-sm font-medium cursor-pointer select-none ${
+                        slot.enabled ? 'text-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {dayLabel}
+                    </label>
+                  </div>
+                  {slot.enabled && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={slot.start_time}
+                        onChange={(e) => handleSlotTime(idx, 'start_time', e.target.value)}
+                        className="border border-border bg-background text-foreground text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-muted-foreground text-sm">to</span>
+                      <input
+                        type="time"
+                        value={slot.end_time}
+                        onChange={(e) => handleSlotTime(idx, 'end_time', e.target.value)}
+                        className="border border-border bg-background text-foreground text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  )}
+                  {!slot.enabled && (
+                    <span className="text-xs text-muted-foreground/60">Unavailable</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-5 flex justify-end">
+            <Button
+              onClick={handleSaveAvailability}
+              disabled={savingAvail}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {savingAvail ? 'Saving…' : 'Save Availability'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-foreground text-xl">Connection Requests</CardTitle>
@@ -247,17 +367,34 @@ const LawyerDashboard = () => {
         <CardContent className="space-y-4">
           {connections.length === 0 && (
             <div className="text-center text-muted-foreground py-6">No connection requests yet.</div>
-          )}
-          {connections.map((connection) => (
+          )}          {connections.map((connection) => {
+            const isQuote = connection.request_type === 'quote';
+            return (
             <div
               key={connection.id}
-              className="border-border rounded-lg p-4 bg-background/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+              className="border border-border rounded-lg p-4 bg-background/30 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
             >
-              <div>
-                <p className="text-foreground font-semibold">
-                  {connection.client?.name || connection.client?.username || "Client"}
-                </p>
-                <p className="text-sm text-muted-foreground">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-foreground font-semibold">
+                    {connection.client?.name || connection.client?.username || "Client"}
+                  </p>
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded uppercase ${
+                    isQuote
+                      ? 'bg-secondary/20 text-secondary-foreground border border-border'
+                      : 'bg-primary/10 text-primary'
+                  }`}>
+                    {isQuote ? '📋 Quote Request' : '🤝 Consultation'}
+                  </span>
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded uppercase ${
+                    connection.status === 'pending'  ? 'bg-muted text-muted-foreground' :
+                    connection.status === 'accepted' ? 'bg-primary/10 text-primary' :
+                    'bg-destructive/10 text-destructive'
+                  }`}>
+                    {connection.status}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
                   Contact: {connection.preferred_contact_value || connection.client?.email || "Not provided"}
                 </p>
                 {connection.preferred_time && (
@@ -265,7 +402,7 @@ const LawyerDashboard = () => {
                     Preferred time: {formatDateTime(connection.preferred_time)}
                   </p>
                 )}
-                {connection.meeting_link && (
+                {connection.meeting_link && !isQuote && (
                   <p className="text-sm text-primary mt-1">
                     Google Meet:{" "}
                     <a
@@ -280,12 +417,9 @@ const LawyerDashboard = () => {
                 )}
                 {connection.message && (
                   <p className="text-sm text-foreground mt-2 whitespace-pre-wrap">
-                    “{connection.message}”
+                    "{connection.message}"
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground/80 mt-2">
-                  Status: <span className="uppercase">{connection.status}</span>
-                </p>
               </div>
               {connection.status === "pending" && (
                 <div className="flex gap-2">
@@ -293,7 +427,7 @@ const LawyerDashboard = () => {
                     className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     onClick={() => handleConnectionUpdate(connection.id, "accepted")}
                   >
-                    Accept
+                    {isQuote ? 'Accept Quote' : 'Accept'}
                   </Button>
                   <Button
                     variant="destructive"
@@ -354,7 +488,8 @@ const LawyerDashboard = () => {
                 </Button>
               )}
             </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>

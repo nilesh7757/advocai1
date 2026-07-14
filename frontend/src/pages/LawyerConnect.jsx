@@ -6,6 +6,7 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ConnectModal from '../Components/ConnectModal';
+import QuoteModal from '../Components/QuoteModal';
 import { Search, Check } from 'lucide-react';
 import { Input } from '../Components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../Components/ui/Select';
@@ -23,6 +24,8 @@ const LawyerConnect = () => {
   const [allSpecializations, setAllSpecializations] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLawyer, setSelectedLawyer] = useState(null);
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [quoteLawyer, setQuoteLawyer] = useState(null);
 
   useEffect(() => {
     const fetchLawyers = async () => {
@@ -105,7 +108,7 @@ const LawyerConnect = () => {
     setIsModalOpen(true);
   };
 
-  const handleConnect = async ({ message, preferredContact, preferredTime }) => {
+  const handleConnect = async ({ message, preferredContact, preferredTime, request_type }) => {
     if (!selectedLawyer?.user?.id) return;
 
     if (!message || !preferredContact || !preferredTime) {
@@ -129,6 +132,7 @@ const LawyerConnect = () => {
         preferred_contact_method: preferredContact?.includes('@') ? 'email' : 'phone',
         preferred_contact_value: preferredContact || user?.email || '',
         preferred_time: preferredTimeIso,
+        request_type: request_type || 'consultation',
       });
 
       if (response.data.message) {
@@ -141,6 +145,28 @@ const LawyerConnect = () => {
       toast.error(err.response?.data?.error || 'Unable to send connection request.');
     } finally {
       setIsModalOpen(false);
+    }
+  };
+
+  const openQuoteModal = (lawyer) => {
+    setQuoteLawyer(lawyer);
+    setIsQuoteOpen(true);
+  };
+
+  const handleQuote = async ({ message, preferredContact, request_type }) => {
+    if (!quoteLawyer?.user?.id) return;
+    try {
+      const response = await axios.post(`api/lawyer/${quoteLawyer.user.id}/connect/`, {
+        message: message || '',
+        preferred_contact_method: preferredContact?.includes('@') ? 'email' : 'phone',
+        preferred_contact_value: preferredContact || user?.email || '',
+        request_type: 'quote',
+      });
+      toast.success(response.data.message || 'Quote request sent!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Unable to send quote request.');
+    } finally {
+      setIsQuoteOpen(false);
     }
   };
 
@@ -293,20 +319,26 @@ const LawyerConnect = () => {
                     </p>
                   )}
                 </div>
-                {/* View Profile Button */}
                 <div className="flex flex-col gap-2">
                   <Button
                     onClick={() => handleViewProfile(lawyer?.user?.id || lawyer.id)}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200 text-sm"
+                    variant="outline"
+                    className="w-full text-foreground border-border hover:bg-card hover:border-primary/40 transition-colors duration-200 text-sm"
                   >
                     View Profile
                   </Button>
                   <Button
-                    variant="outline"
                     onClick={() => openConnectModal(lawyer)}
-                    className="w-full text-primary border-primary/40 hover:bg-primary/10 hover:text-primary/90 transition-colors duration-200 text-sm"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200 text-sm"
                   >
                     Connect
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openQuoteModal(lawyer)}
+                    className="w-full text-foreground border-border hover:bg-card hover:border-primary/40 transition-colors duration-200 text-sm"
+                  >
+                    Request a Quote
                   </Button>
                 </div>
               </CardContent>
@@ -330,6 +362,14 @@ const LawyerConnect = () => {
           onOpenChange={setIsModalOpen}
           lawyer={selectedLawyer}
           onConnect={handleConnect}
+        />
+      )}
+      {quoteLawyer && (
+        <QuoteModal
+          isOpen={isQuoteOpen}
+          onOpenChange={setIsQuoteOpen}
+          lawyer={quoteLawyer}
+          onSubmit={handleQuote}
         />
       )}
     </>
