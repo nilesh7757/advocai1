@@ -75,6 +75,13 @@ const DocumentCreation = () => {
   const documentRef = useRef(null); // Ref for the document area
   const [isZenMode, setIsZenMode] = useState(false); // Zen mode state
 
+  useEffect(() => {
+    const initialPrompt = location.state?.initialPrompt || queryParams.get('prompt');
+    if (initialPrompt) {
+      setChatMessage(initialPrompt);
+    }
+  }, [location.state, location.search]);
+
   const handleShareDocument = async () => {
     if (!mongoConversationId) {
       toast('Please save the document before sharing.', { icon: 'ℹ️' });
