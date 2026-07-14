@@ -86,7 +86,7 @@ const AdminDashboard = () => {
   const [targetUser, setTargetUser] = useState(null); // User object
   const [modalReason, setModalReason] = useState('');
 
-  const isSuperAdminUser = user?.email?.lower() === 'nileshmori7757@gmail.com' || user?.is_superuser;
+  const isSuperAdminUser = user?.email?.toLowerCase() === 'nileshmori7757@gmail.com' || user?.is_superuser;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1253,7 +1253,7 @@ const AdminDashboard = () => {
                             </span>
                             
                             {/* Option to demote admin */}
-                            {adm.email.lower() !== 'nileshmori7757@gmail.com' && adm.email.lower() !== user.email.lower() && (
+                            {(adm.email?.toLowerCase() || '') !== 'nileshmori7757@gmail.com' && (adm.email?.toLowerCase() || '') !== (user?.email?.toLowerCase() || '') && (
                               <button
                                 onClick={async () => {
                                   if (confirm(`Remove admin permissions for ${adm.email}?`)) {
