@@ -58,6 +58,7 @@ class User(Document):
     # Timestamps
     date_joined = DateTimeField(default=datetime.now)
     last_login = DateTimeField()
+    deactivated_at = DateTimeField()
     
     meta = {
         'collection': 'users',

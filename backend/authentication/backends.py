@@ -9,7 +9,7 @@ class EmailBackend(BaseBackend):
     def authenticate(self, request, email=None, password=None, **kwargs):
         try:
             user = User.objects(email=email).first()
-            if user and user.check_password(password):
+            if user and user.is_active and user.check_password(password):
                 return user
         except DoesNotExist:
             return None

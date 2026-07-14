@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { User, Mail, Phone, Camera, Check, X, Lock, Briefcase, BarChart3, Bell, Shield, Trash2 } from "lucide-react";
 import { Switch } from '../Components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../Components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from '../api/axios';
 import PasswordModal from '../Components/PasswordModal';
@@ -10,7 +11,8 @@ import PasswordModal from '../Components/PasswordModal';
 const VALID_TABS = ['profile', 'professional', 'activity', 'notifications', 'security', 'danger'];
 
 const Profile = () => {
-  const { user, loading, setUser } = useAuth();
+  const { user, loading, setUser, setIsAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
@@ -53,6 +55,10 @@ const Profile = () => {
 
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [twoFactorSaving, setTwoFactorSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -220,6 +226,28 @@ const Profile = () => {
       toast.error(err.response?.data?.error || 'Failed to update two-factor authentication.');
     } finally {
       setTwoFactorSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const payload = {};
+      if (user.auth_provider !== 'google' || user.has_password) {
+        payload.password = deletePassword;
+      }
+      await axios.post('api/auth/delete-account/', payload);
+      toast.success('Your account has been deleted.');
+      setDeleteDialogOpen(false);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/login');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete account.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -985,10 +1013,94 @@ const Profile = () => {
               )}
 
               {activeTab === 'danger' && (
-                <div className="py-12 text-center">
-                  <p className="text-muted-foreground text-sm">Coming soon</p>
+                <div className="space-y-6">
+                  <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <Trash2 className="w-5 h-5 text-destructive" />
+                    Danger Zone
+                  </h2>
+
+                  <div className="border border-destructive/30 rounded-xl p-6 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-destructive">Delete Account</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Permanently delete your account and all associated data. This action cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setDeletePassword('');
+                        setDeleteConfirmText('');
+                        setDeleteDialogOpen(true);
+                      }}
+                      className="px-6 py-3 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-medium transition-all duration-200"
+                    >
+                      Delete My Account
+                    </button>
+                  </div>
                 </div>
               )}
+
+              {/* Delete Account Dialog */}
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-destructive">Delete Account</DialogTitle>
+                    <DialogDescription>
+                      This will permanently deactivate your account. You will lose access to all your data, documents, and connections.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-2">
+                    {(user.auth_provider !== 'google' || user.has_password) && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">Confirm your password</label>
+                        <input
+                          type="password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive focus:border-transparent transition-all"
+                          placeholder="Enter your password"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Type <span className="font-bold text-destructive">DELETE</span> to confirm</label>
+                      <input
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive focus:border-transparent transition-all"
+                        placeholder="Type DELETE"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <button
+                      onClick={() => setDeleteDialogOpen(false)}
+                      className="px-4 py-2 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={
+                        deleting ||
+                        deleteConfirmText !== 'DELETE' ||
+                        ((user.auth_provider !== 'google' || user.has_password) && !deletePassword)
+                      }
+                      className="px-4 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {deleting ? (
+                        <div className="w-4 h-4 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      Delete Account
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>

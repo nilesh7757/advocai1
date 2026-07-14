@@ -20,6 +20,9 @@ class MongoEngineJWTAuthentication(JWTAuthentication):
             if not user:
                 return None
 
+            if not user.is_active:
+                return None
+
             token_version = validated_token.get("token_version", 0)
             if token_version != getattr(user, "token_version", 0):
                 return None

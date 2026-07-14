@@ -776,6 +776,44 @@ def two_factor_toggle_view(request):
     )
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def delete_account_view(request):
+    """Soft-delete the authenticated user's account."""
+    try:
+        user = request.user
+
+        # If user has a usable password, require password confirmation
+        if user.has_usable_password():
+            password = request.data.get("password")
+            if not password:
+                return Response(
+                    {"error": "Password is required to delete your account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not user.check_password(password):
+                return Response(
+                    {"error": "Incorrect password. Please try again."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Soft-delete: deactivate + invalidate all tokens
+        user.is_active = False
+        user.deactivated_at = datetime.now()
+        user.token_version = getattr(user, "token_version", 0) + 1
+        user.save()
+
+        return Response(
+            {"message": "Your account has been deleted."},
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def lawyer_list_view(request):
