@@ -4,9 +4,6 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { GoogleLoginButton } from '@/Components/ui/GoogleLoginButton';
-import { Button } from "@/Components/ui/button";
-import { Input } from "@/Components/ui/Input";
-import { Label } from "@/Components/ui/Label";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -41,7 +38,6 @@ const Login = () => {
       ...formData,
       [name]: value
     });
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -52,8 +48,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate form before submission
+
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
       return;
@@ -61,12 +56,11 @@ const Login = () => {
 
     setLoading(true);
     setErrors({});
-    
+
     try {
       await login(formData.email.trim().toLowerCase(), formData.password);
     } catch (error) {
       console.error('Login error:', error);
-      // Error handling is done in AuthContext
     } finally {
       setLoading(false);
     }
@@ -79,27 +73,23 @@ const Login = () => {
         toast.error('Google authentication failed. Please try again.');
         return;
       }
-      
-      console.log('Sending token to backend:', tokenData);
+
       const response = await axios.post('api/auth/google/', { token: tokenData.credential });
-      
-      console.log('Backend response:', response.data);
-      
-      // Store tokens and user data
+
       const { access, refresh } = response.data.tokens;
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
       setUser(response.data.user);
       setIsAuthenticated(true);
-      
+
       toast.success(response.data.message || 'Login successful!');
       navigate('/');
     } catch (error) {
       console.error('Google login error:', error);
-      
+
       if (error.response) {
-        const errorMsg = error.response.data?.error 
-          || error.response.data?.details 
+        const errorMsg = error.response.data?.error
+          || error.response.data?.details
           || error.response.data?.detail
           || 'Google login failed. Please try again.';
         toast.error(errorMsg);
@@ -116,7 +106,7 @@ const Login = () => {
   const handleGoogleError = (error) => {
     console.error('Google OAuth error:', error);
     setLoading(false);
-    
+
     if (error?.error === 'popup_closed_by_user') {
       toast.error('Google sign-in was cancelled.');
     } else if (error?.error === 'access_denied') {
@@ -128,30 +118,37 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
-      
-      {/* Go back button */}
+      {/* Subtle dot-grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }}
+      />
+
+      {/* Back button */}
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="absolute top-4 left-4 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 hover:bg-card/70 text-muted-foreground border border-border/50 shadow-lg backdrop-blur-md transition-all duration-200"
+        className="absolute top-4 left-4 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-muted text-muted-foreground border border-border transition-colors duration-150 text-sm font-medium"
       >
-        <span className="text-xl leading-none">←</span>
-        <span className="text-sm font-medium tracking-wide uppercase opacity-90">Go back</span>
+        <span className="text-lg leading-none">&larr;</span>
+        Go back
       </button>
-      
-      {/* Login form card */}
-      <div className="w-full max-w-md p-8 space-y-6 bg-card/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 relative z-10 animate-fade-in">
-        <div className="text-center">
-          <div className="inline-block mb-4 px-4 py-2 bg-primary/20 rounded-full border border-primary/30">
+
+      {/* Login card */}
+      <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-2xl shadow-2xl border border-border relative z-10">
+        <div className="text-center space-y-2">
+          <div className="inline-block mb-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
             <span className="text-primary text-sm font-semibold">Welcome Back</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-foreground mb-2 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+          <h1 className="text-4xl font-extrabold text-foreground">
             Login
           </h1>
-          <p className="text-muted-foreground">Enter your email below to login to your account</p>
+          <p className="text-muted-foreground text-sm">Enter your email below to login to your account</p>
         </div>
+
         {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
           <GoogleLoginButton
             onSuccess={handleGoogleLogin}
@@ -160,16 +157,17 @@ const Login = () => {
             disabled={loading}
           />
         ) : (
-          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-lg" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
+          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-xl" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
             Google Login is unavailable (Missing Configuration)
           </div>
         )}
+
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/50" />
+            <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card/90 px-4 text-muted-foreground">
+            <span className="bg-card px-4 text-muted-foreground">
               Or continue with
             </span>
           </div>
@@ -177,8 +175,8 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
-            <Input
+            <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
+            <input
               id="email"
               name="email"
               type="email"
@@ -187,17 +185,18 @@ const Login = () => {
               value={formData.email}
               onChange={handleInputChange}
               disabled={loading}
-              className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
           </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-              <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors duration-200">
+              <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+              <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors">
                 Forgot password?
               </Link>
             </div>
-            <Input
+            <input
               id="password"
               name="password"
               type="password"
@@ -206,49 +205,32 @@ const Login = () => {
               value={formData.password}
               onChange={handleInputChange}
               disabled={loading}
-              className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+              className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
-            <div className="bg-muted/50 border border-border/30 rounded-lg p-3 mt-2">
-              <p className="text-xs font-semibold text-foreground mb-2">Password must contain:</p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                <li className={`flex items-center gap-2 ${formData.password.length >= 8 ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span>{formData.password.length >= 8 ? '✓' : '○'}</span>
-                  At least 8 characters
-                </li>
-                <li className={`flex items-center gap-2 ${/[A-Z]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span>{/[A-Z]/.test(formData.password) ? '✓' : '○'}</span>
-                  One uppercase letter (A-Z)
-                </li>
-                <li className={`flex items-center gap-2 ${/[a-z]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span>{/[a-z]/.test(formData.password) ? '✓' : '○'}</span>
-                  One lowercase letter (a-z)
-                </li>
-                <li className={`flex items-center gap-2 ${/[0-9]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span>{/[0-9]/.test(formData.password) ? '✓' : '○'}</span>
-                  One number (0-9)
-                </li>
-                <li className={`flex items-center gap-2 ${/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span>{/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]/.test(formData.password) ? '✓' : '○'}</span>
-                  One special character (!@#$%^&*)
-                </li>
-              </ul>
-            </div>
           </div>
-          <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-foreground shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 transition-all duration-300" 
+
+          <button
+            type="submit"
             disabled={loading}
+            className="w-full py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? 'Logging in...' : 'Login'}
-          </Button>
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
+          </button>
         </form>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
-          <Link to="/signup" className="font-medium text-primary hover:text-primary/80 hover:underline transition-colors duration-200">
+          <Link to="/signup" className="font-medium text-primary hover:text-primary/80 hover:underline transition-colors">
             Sign up
           </Link>
-        </div>
+        </p>
       </div>
     </div>
   );
