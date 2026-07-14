@@ -10,6 +10,22 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+# Mock pkg_resources for compatibility with Python 3.14+ where setuptools/pkg_resources is removed
+try:
+    import pkg_resources
+except ModuleNotFoundError:
+    import sys
+    from types import ModuleType
+    pkg_resources_mock = ModuleType("pkg_resources")
+    pkg_resources_mock.DistributionNotFound = Exception
+
+    class MockDist:
+        def __init__(self, version="5.3.0"):
+            self.version = version
+
+    pkg_resources_mock.get_distribution = lambda dist: MockDist()
+    sys.modules["pkg_resources"] = pkg_resources_mock
+
 from pathlib import Path
 from dotenv import load_dotenv
 import os
