@@ -98,7 +98,7 @@ const DocumentAnalyzer = () => {
   const [error, setError] = useState('');
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [dragActive, setDragActive] = useState(false);
   const [editingSessionTagsId, setEditingSessionTagsId] = useState(null);
   const [newTagsInput, setNewTagsInput] = useState('');
@@ -108,7 +108,7 @@ const DocumentAnalyzer = () => {
   const [severityFilter, setSeverityFilter] = useState('All'); // Severity filter: 'All', 'Critical', 'High', 'Medium', 'Low'
   const [activeClauseIndex, setActiveClauseIndex] = useState(null); // Clicked highlighted clause index
   const [showFullSummary, setShowFullSummary] = useState(false); // Collapsible top bar summary toggle
-  const [chatOpen, setChatOpen] = useState(true); // Collapsible chat drawer
+  const [chatOpen, setChatOpen] = useState(() => window.innerWidth >= 768); // Collapsible chat drawer
 
   // Document Comparison States
   const [analyzerMode, setAnalyzerMode] = useState('single'); // 'single' | 'compare'

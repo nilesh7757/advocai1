@@ -558,21 +558,23 @@ const MyDocuments = () => {
         {/* Tabs Area */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="my_documents" className="flex items-center justify-center gap-2">
-              <span>My Documents</span>
-              <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
+            <TabsTrigger value="my_documents" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <span className="hidden sm:inline">My Documents</span>
+              <span className="sm:hidden">My Docs</span>
+              <span className="px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-0.5 sm:text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
                 {myDocumentsList.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="shared_with_me" className="flex items-center justify-center gap-2">
-              <span>Shared with Me</span>
-              <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
+            <TabsTrigger value="shared_with_me" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <span className="hidden sm:inline">Shared with Me</span>
+              <span className="sm:hidden">Shared</span>
+              <span className="px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-0.5 sm:text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
                 {sharedWithMeDocumentsList.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center justify-center gap-2">
+            <TabsTrigger value="templates" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
               <span>Templates</span>
-              <span className="px-1.5 py-0.5 text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
+              <span className="px-1 py-0.5 text-[10px] sm:px-1.5 sm:py-0.5 sm:text-xs bg-muted-foreground/10 dark:bg-muted-foreground/20 rounded-full font-medium text-muted-foreground">
                 {templatesList.length}
               </span>
             </TabsTrigger>

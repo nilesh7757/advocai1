@@ -152,8 +152,7 @@ const DocumentCreation = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [jurisdiction, setJurisdiction] = useState('india');
 
-  const chatContainerRef = useRef(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState('comments'); // 'comments' | 'versions'
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
@@ -716,16 +715,16 @@ const DocumentCreation = () => {
       <div className="flex relative h-screen bg-background overflow-hidden">
         <div className="w-full relative z-10 flex flex-col h-screen overflow-hidden">
           {/* Unified Top Bar Header */}
-          <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 bg-card border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="p-2 bg-primary/10 text-primary rounded-lg flex-shrink-0">
                 <FileText className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">Legal Document Assistant</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground truncate">Legal Document Assistant</h2>
             </div>
 
-            <div className="flex items-center gap-3 max-w-2xl flex-1 justify-end min-w-0">
-              <div className="relative flex-1 max-w-xs min-w-0">
+            <div className="flex items-center gap-3 w-full sm:w-auto sm:max-w-2xl sm:flex-1 sm:justify-end min-w-0">
+              <div className="relative flex-1 sm:max-w-xs min-w-0">
                 <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
@@ -966,8 +965,8 @@ const DocumentCreation = () => {
       <div className="flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 min-w-0 bg-background relative">
         {/* Top Bar (Hidden in Zen Mode) */}
         {!isZenMode && (
-          <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="px-4 py-3 sm:px-6 sm:py-4 bg-card border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
               {!sidebarOpen && (
                 <button
                   onClick={() => setSidebarOpen(true)}
@@ -1010,7 +1009,7 @@ const DocumentCreation = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end items-center">
+            <div className="flex gap-2 flex-shrink-0 flex-wrap justify-start sm:justify-end items-center w-full sm:w-auto">
               {/* Jurisdiction Toggle Pill (Toolbar) */}
               <div className="flex bg-muted p-0.5 rounded-full border border-border select-none mr-1">
                 <button
