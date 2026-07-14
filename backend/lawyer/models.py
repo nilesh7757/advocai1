@@ -73,6 +73,13 @@ class LawyerConnectionRequest(Document):
     preferred_contact_value = StringField(max_length=255, default='')
     preferred_time = DateTimeField(required=False, null=True)
     meeting_link = StringField(max_length=512, default='')
+    # Case / matter tracking
+    case_status = StringField(
+        max_length=32,
+        default='open',
+        choices=('open', 'in_progress', 'resolved'),
+    )
+    case_notes = StringField(default='')
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)
 
@@ -89,3 +96,26 @@ class LawyerConnectionRequest(Document):
     def save(self, *args, **kwargs):
         self.updated_at = datetime.utcnow()
         return super().save(*args, **kwargs)
+
+
+class LawyerReview(Document):
+    """Reviews left by clients for lawyers after an accepted engagement"""
+
+    lawyer = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
+    client = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
+    connection_request = ReferenceField(
+        LawyerConnectionRequest, required=True, reverse_delete_rule=CASCADE
+    )
+    rating = IntField(required=True, min_value=1, max_value=5)
+    review_text = StringField(default='')
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    meta = {
+        'collection': 'lawyer_reviews',
+        'db_alias': 'default',
+        'indexes': [
+            # unique-together: one review per client+connection_request
+            {'fields': ['client', 'connection_request'], 'unique': True},
+            'lawyer',
+        ],
+    }

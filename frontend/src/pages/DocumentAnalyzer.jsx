@@ -25,8 +25,13 @@ import {
   ChevronUp,
   Plus,
   Download,
+  Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import axios from '../api/axios';
+import { useAuth } from '../context/AuthContext';
+import ConnectModal from '../Components/ConnectModal';
 
 import { 
   uploadDocument as uploadDocumentApi, 
@@ -66,7 +71,15 @@ const getMitigation = (clause) => (clause?.mitigation || clause?.suggestion || c
 const getReplacementClause = (clause) => (clause?.replacement_clause || clause?.replacementClause || clause?.alternate_clause || clause?.alternateClause || clause?.alternative_clause || clause?.alternativeClause || '').trim();
 
 const DocumentAnalyzer = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   const fileInputRef = useRef(null);
+  const [documentType, setDocumentType] = useState('');
+  const [matchedLawyers, setMatchedLawyers] = useState([]);
+  const [loadingMatchedLawyers, setLoadingMatchedLawyers] = useState(false);
+  const [selectedLawyer, setSelectedLawyer] = useState(null);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [summary, setSummary] = useState('');
@@ -122,6 +135,70 @@ const DocumentAnalyzer = () => {
     setActiveClauseIndex(null);
     setShowFullSummary(false);
     setChatOpen(false);
+    setDocumentType('');
+    setMatchedLawyers([]);
+  };
+
+  const fetchMatchedLawyers = async (docType, clauses) => {
+    if (!docType) {
+      setMatchedLawyers([]);
+      return;
+    }
+    setLoadingMatchedLawyers(true);
+    try {
+      const levels = Array.from(new Set(clauses.map(c => getRiskDisplay(c).level))).join(',');
+      const response = await axios.get(`api/lawyer/match/`, {
+        params: {
+          document_type: docType,
+          risk_categories: levels
+        }
+      });
+      setMatchedLawyers(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error('Failed to fetch matched lawyers:', err);
+      setMatchedLawyers([]);
+    } finally {
+      setLoadingMatchedLawyers(false);
+    }
+  };
+
+  const handleConnectMatchedLawyer = async ({ message, preferredContact, preferredTime, request_type }) => {
+    if (!selectedLawyer?.user?.id) return;
+
+    if (!message || !preferredContact || !preferredTime) {
+      toast.error('Please fill out all fields.');
+      return;
+    }
+
+    let preferredTimeIso = null;
+    if (preferredTime) {
+      const parsedDate = new Date(preferredTime);
+      if (Number.isNaN(parsedDate.getTime())) {
+        toast.error('Please provide a valid consultation time.');
+        return;
+      }
+      preferredTimeIso = parsedDate.toISOString();
+    }
+
+    try {
+      const response = await axios.post(`api/lawyer/${selectedLawyer.user.id}/connect/`, {
+        message: message || '',
+        preferred_contact_method: preferredContact?.includes('@') ? 'email' : 'phone',
+        preferred_contact_value: preferredContact || user?.email || '',
+        preferred_time: preferredTimeIso,
+        request_type: request_type || 'consultation',
+      });
+
+      if (response.data.message) {
+        toast.success(response.data.message);
+      }
+      setIsConnectModalOpen(false);
+      setSelectedLawyer(null);
+    } catch (err) {
+      console.error('Failed to submit connection request:', err);
+      const errMsg = err?.response?.data?.error || err?.message || 'Failed to submit request';
+      toast.error(errMsg);
+    }
   };
 
   const handleSaveTags = async (sessionIdToSave) => {
@@ -229,12 +306,19 @@ const DocumentAnalyzer = () => {
 
       setHighlightedPreview(previewHtml || '');
       setPreviewText(previewPlain || '');
-      setHighRiskClauses(Array.isArray(riskClausesRaw) ? riskClausesRaw : []);
+      const finalRiskClauses = Array.isArray(riskClausesRaw) ? riskClausesRaw : [];
+      setHighRiskClauses(finalRiskClauses);
 
       // Accept multiple possible shapes from backend
       const receivedSummary = response?.summary ?? response?.data?.summary ?? '';
       const receivedComprehensiveSummary = response?.comprehensive_summary ?? response?.data?.comprehensive_summary ?? null;
       const receivedSessionId = response?.session_id ?? response?.sessionId ?? null;
+      const receivedDocumentType = response?.document_type ?? response?.data?.document_type ?? '';
+
+      setDocumentType(receivedDocumentType);
+      if (receivedDocumentType) {
+        fetchMatchedLawyers(receivedDocumentType, finalRiskClauses);
+      }
 
       // Store comprehensive summary if available
       setComprehensiveSummaryLoading(false);
@@ -460,7 +544,14 @@ const DocumentAnalyzer = () => {
 
       setHighlightedPreview(sessionPreviewHtml || '');
       setPreviewText(sessionPreviewPlain || '');
-      setHighRiskClauses(Array.isArray(sessionRiskClauses) ? sessionRiskClauses : []);
+      const finalSessionRiskClauses = Array.isArray(sessionRiskClauses) ? sessionRiskClauses : [];
+      setHighRiskClauses(finalSessionRiskClauses);
+      
+      const sessionDocumentType = sessionInfo.document_type ?? session.document_type ?? '';
+      setDocumentType(sessionDocumentType);
+      if (sessionDocumentType) {
+        fetchMatchedLawyers(sessionDocumentType, finalSessionRiskClauses);
+      }
     } catch (err) {
       console.error(err);
       const message = err?.response?.data?.error || err?.message || 'Failed to load session';
@@ -1584,6 +1675,90 @@ const DocumentAnalyzer = () => {
                     <p className="text-[10px] text-muted-foreground mt-0.5">No risks found for filter "{severityFilter}"</p>
                   </div>
                 )}
+
+                {/* Need Legal Help Section */}
+                {hasAnalysis && (
+                  <div className="mt-4 p-4 rounded-xl border border-border bg-card flex flex-col gap-3 shadow-sm select-none">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span>Need Legal Help With This?</span>
+                    </h4>
+                    {loadingMatchedLawyers ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      </div>
+                    ) : matchedLawyers.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-[11px] text-muted-foreground leading-normal">
+                          Based on the analyzed {documentType || 'document'} and risks, we found matching legal specialists:
+                        </p>
+                        <div className="flex flex-col gap-2.5">
+                          {matchedLawyers.slice(0, 3).map((lawyer) => (
+                            <div key={lawyer.id} className="p-3 rounded-lg border border-border bg-muted/10 hover:border-primary/40 transition-colors duration-200 flex flex-col gap-2">
+                              <div className="flex items-start gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary font-semibold text-[11px]">
+                                  {lawyer?.user?.name
+                                    ? lawyer.user.name.split(' ').map(n => n[0]).join('')
+                                    : lawyer?.user?.username?.slice(0, 2)?.toUpperCase() || 'L'}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-foreground truncate">
+                                    {lawyer?.user?.name || lawyer?.user?.username || 'Verified Lawyer'}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground truncate">
+                                    {Array.isArray(lawyer.specializations) && lawyer.specializations.length > 0
+                                      ? lawyer.specializations.slice(0, 2).join(', ')
+                                      : 'General Practice'}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                                    {lawyer.experience_years !== undefined && (
+                                      <span>{lawyer.experience_years} yrs exp</span>
+                                    )}
+                                    {lawyer.review_count > 0 && (
+                                      <span className="flex items-center gap-0.5">
+                                        <Star className="w-2.5 h-2.5 fill-primary text-primary" />
+                                        <span className="font-semibold text-foreground">{lawyer.average_rating}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-1">
+                                <button
+                                  onClick={() => navigate(`/lawyer-profile/${lawyer.user?.id || lawyer.id}`)}
+                                  className="px-2 py-1.5 border border-border hover:bg-muted text-[10px] font-medium text-foreground rounded transition-colors text-center cursor-pointer"
+                                >
+                                  View Profile
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedLawyer(lawyer);
+                                    setIsConnectModalOpen(true);
+                                  }}
+                                  className="px-2 py-1.5 bg-primary hover:bg-primary/90 text-[10px] font-medium text-primary-foreground rounded transition-colors text-center cursor-pointer"
+                                >
+                                  Connect
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-2 flex flex-col gap-1.5">
+                        <p className="text-[11px] text-muted-foreground leading-normal">
+                          No specialists available yet for this document type.
+                        </p>
+                        <button
+                          onClick={() => navigate('/lawyer-connect')}
+                          className="text-xs font-semibold text-primary hover:underline self-center cursor-pointer bg-transparent border-none p-0"
+                        >
+                          Browse all lawyers
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -1683,6 +1858,15 @@ const DocumentAnalyzer = () => {
           </div>
         </div>
       </div>
+      {selectedLawyer && (
+        <ConnectModal
+          isOpen={isConnectModalOpen}
+          onOpenChange={setIsConnectModalOpen}
+          lawyer={selectedLawyer}
+          onConnect={handleConnectMatchedLawyer}
+          initialMessage={`I have a ${documentType || 'document'} that was flagged with ${highRiskClauses.length} risk issues and would like help reviewing it.`}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { User, Mail, Phone, GraduationCap, Building, Clock, DollarSign, Check } from "lucide-react";
+import { User, Mail, Phone, GraduationCap, Building, Clock, DollarSign, Check, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/Card";
 import { Label } from "@/Components/ui/Label";
 import axios from "../api/axios";
@@ -17,6 +17,9 @@ const LawyerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsNextUrl, setReviewsNextUrl] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -31,10 +34,40 @@ const LawyerProfile = () => {
       }
     };
 
+    const fetchReviews = async () => {
+      setReviewsLoading(true);
+      try {
+        const resp = await axios.get(`api/lawyer/${id}/reviews/`);
+        const data = resp.data;
+        setReviews(data.results || data || []);
+        setReviewsNextUrl(data.next || null);
+      } catch (e) {
+        console.error('Failed to load reviews:', e);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
     if (id) {
       fetchProfile();
+      fetchReviews();
     }
   }, [id]);
+
+  const loadMoreReviews = async () => {
+    if (!reviewsNextUrl) return;
+    setReviewsLoading(true);
+    try {
+      const resp = await axios.get(reviewsNextUrl);
+      const data = resp.data;
+      setReviews(prev => [...prev, ...(data.results || data || [])]);
+      setReviewsNextUrl(data.next || null);
+    } catch (e) {
+      toast.error('Failed to load more reviews.');
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
   const openConnectModal = () => {
     setIsModalOpen(true);
@@ -260,6 +293,64 @@ const LawyerProfile = () => {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Reviews Section */}
+        <Card className="max-w-3xl mx-auto mt-6 bg-card border-border">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-foreground text-xl flex items-center gap-2">
+                <Star className="w-5 h-5 text-primary" />
+                Reviews
+              </CardTitle>
+              {profileData?.review_count > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{profileData.average_rating}</span> avg ·{' '}
+                  {profileData.review_count} {profileData.review_count === 1 ? 'review' : 'reviews'}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {reviews.length === 0 && !reviewsLoading && (
+              <p className="text-muted-foreground text-sm">No reviews yet.</p>
+            )}
+            {reviews.map((review) => (
+              <div key={review.id} className="border border-border rounded-lg p-4 bg-background/30">
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(s => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${
+                          s <= review.rating ? 'fill-primary text-primary' : 'text-muted-foreground'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {review.client?.name || 'Anonymous'} ·{' '}
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                {review.review_text && (
+                  <p className="text-sm text-foreground">{review.review_text}</p>
+                )}
+              </div>
+            ))}
+            {reviewsNextUrl && (
+              <div className="text-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={loadMoreReviews}
+                  disabled={reviewsLoading}
+                  className="text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                >
+                  {reviewsLoading ? 'Loading…' : 'Load More Reviews'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

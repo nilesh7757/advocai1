@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -46,10 +46,16 @@ const AvailabilityPreview = ({ availability }) => {
   );
 };
 
-const ConnectModal = ({ isOpen, onOpenChange, lawyer, onConnect }) => {
-  const [message, setMessage] = useState('');
+const ConnectModal = ({ isOpen, onOpenChange, lawyer, onConnect, initialMessage = '' }) => {
+  const [message, setMessage] = useState(initialMessage);
   const [preferredContact, setPreferredContact] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setMessage(initialMessage || '');
+    }
+  }, [isOpen, initialMessage]);
 
   const handleSubmit = () => {
     onConnect({

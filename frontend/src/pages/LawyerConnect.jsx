@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ConnectModal from '../Components/ConnectModal';
 import QuoteModal from '../Components/QuoteModal';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, Star } from 'lucide-react';
 import { Input } from '../Components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../Components/ui/Select';
 
@@ -26,6 +26,7 @@ const LawyerConnect = () => {
   const [selectedLawyer, setSelectedLawyer] = useState(null);
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [quoteLawyer, setQuoteLawyer] = useState(null);
+  const [sortBy, setSortBy] = useState('default');
 
   useEffect(() => {
     const fetchLawyers = async () => {
@@ -100,8 +101,13 @@ const LawyerConnect = () => {
       from its current free-text StringField format.
     */
 
+    // 4. Sort
+    if (sortBy === 'highest_rated') {
+      temp = [...temp].sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+    }
+
     setFilteredLawyers(temp);
-  }, [selectedSpecialization, searchText, selectedExperience, lawyers]);
+  }, [selectedSpecialization, searchText, selectedExperience, sortBy, lawyers]);
 
   const openConnectModal = (lawyer) => {
     setSelectedLawyer(lawyer);
@@ -238,11 +244,18 @@ const LawyerConnect = () => {
             </Select>
           </div>
 
-          {/* 
-            TODO: Add consultation fee range filter once consultation_fee field 
-            in backend/authentication/models.py is updated to a numeric field 
-            from its current free-text StringField format.
-          */}
+          {/* Sort */}
+          <div className="w-full md:w-44">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-10 border-border/80">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default Order</SelectItem>
+                <SelectItem value="highest_rated">Highest Rated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Lawyers Grid */}
@@ -283,6 +296,19 @@ const LawyerConnect = () => {
                     ? lawyer.specializations.join(', ')
                     : 'General Practice'}
                 </CardDescription>
+
+                {/* Star Rating */}
+                <div className="mt-1">
+                  {lawyer.review_count > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star className="w-3 h-3 fill-primary text-primary" />
+                      <span className="font-semibold text-foreground">{lawyer.average_rating}</span>
+                      <span>({lawyer.review_count} {lawyer.review_count === 1 ? 'review' : 'reviews'})</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No reviews yet</span>
+                  )}
+                </div>
 
                 {/* Trust Badges */}
                 <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5 select-none">

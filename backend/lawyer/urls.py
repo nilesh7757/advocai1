@@ -8,15 +8,25 @@ from .views import (
     withdraw_connection_view,
     connection_requests_list_view,
     update_lawyer_availability_view,
+    submit_review_view,
+    lawyer_reviews_view,
+    check_review_status_view,
+    update_case_status_view,
+    lawyer_match_view,
 )
 
 urlpatterns = [
     path('', lawyer_list_view, name='lawyer_list'),
+    path('match/', lawyer_match_view, name='lawyer_match'),
     path('dashboard/', lawyer_dashboard_view, name='lawyer_dashboard'),
     path('availability/', update_lawyer_availability_view, name='update_lawyer_availability'),
     path('connections/', connection_requests_list_view, name='connection_requests_list'),
-    path('<str:lawyer_id>/', lawyer_detail_view, name='lawyer_detail'),
-    path('<str:lawyer_id>/connect/', connect_with_lawyer_view, name='connect_lawyer'),
     path('connections/<str:connection_id>/', lawyer_connection_update_view, name='lawyer_connection_update'),
     path('connections/<str:connection_id>/withdraw/', withdraw_connection_view, name='withdraw_connection'),
+    path('connections/<str:connection_id>/review/', submit_review_view, name='submit_review'),
+    path('connections/<str:connection_id>/review/check/', check_review_status_view, name='check_review'),
+    path('connections/<str:connection_id>/case/', update_case_status_view, name='update_case_status'),
+    path('<str:lawyer_id>/', lawyer_detail_view, name='lawyer_detail'),
+    path('<str:lawyer_id>/connect/', connect_with_lawyer_view, name='connect_lawyer'),
+    path('<str:lawyer_id>/reviews/', lawyer_reviews_view, name='lawyer_reviews'),
 ]

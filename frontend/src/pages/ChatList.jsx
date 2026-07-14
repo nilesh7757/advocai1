@@ -27,8 +27,17 @@ const ChatList = () => {
         axios.get('api/lawyer/connections/')
       ]);
 
-      const conversations = (convResponse.data.results || []).map(c => ({ ...c, type: 'conversation' }));
       const requests = (reqResponse.data || []).map(r => ({ ...r, type: 'request' }));
+
+      // Build lookup: connection_request_id → case_status
+      const caseStatusMap = {};
+      requests.forEach(r => { caseStatusMap[r.id] = r.case_status || 'open'; });
+
+      const conversations = (convResponse.data.results || convResponse.data || []).map(c => ({
+        ...c,
+        type: 'conversation',
+        case_status: c.connection_request_id ? (caseStatusMap[c.connection_request_id] || 'open') : null,
+      }));
 
       // Compare status transitions to show toasts
       if (prevRequestsRef.current.length > 0) {
@@ -141,7 +150,16 @@ const ChatList = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {item.case_status && item.case_status !== 'open' && (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase ${
+                              item.case_status === 'in_progress' ? 'bg-primary/10 text-primary' :
+                              item.case_status === 'resolved' ? 'bg-muted text-muted-foreground' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              {item.case_status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                            </span>
+                          )}
                           {item.unread_count > 0 && (
                             <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                               {item.unread_count}
