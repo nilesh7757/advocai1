@@ -73,8 +73,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
-    "https://doc-gen-iota.vercel.app",
-    
+    "https://advocai1.vercel.app",
+    "https://advocai.nileshmori.me",
 ]
 CORS_EXPOSE_HEADERS = ['Content-Disposition']
 

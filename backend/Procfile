@@ -1,0 +1,2 @@
+web: daphne -b 0.0.0.0 -p $PORT legal_doc_generator.asgi:application
+worker: celery -A legal_doc_generator worker --loglevel=info
