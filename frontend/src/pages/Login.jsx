@@ -4,6 +4,7 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { GoogleLoginButton } from '@/Components/ui/GoogleLoginButton';
+import AuthBackground from '@/Components/AuthBackground';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -118,26 +119,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      {/* Video background — muted, desaturated, dimmed loop */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none grayscale opacity-[0.15] hidden sm:block"
-        src="/signing video.mp4"
-      />
+      <AuthBackground />
 
-      {/* Dot-grid fallback (visible while video loads, and always on mobile) */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-40"
-        style={{
-          backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-
-      {/* Back button */}
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -147,7 +130,6 @@ const Login = () => {
         Go back
       </button>
 
-      {/* Login card */}
       <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-2xl shadow-2xl border border-border relative z-10">
         <div className="text-center space-y-2">
           <div className="inline-block mb-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">

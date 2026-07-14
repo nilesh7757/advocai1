@@ -4,14 +4,12 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import { GoogleLoginButton } from '@/Components/ui/GoogleLoginButton';
 import { useAuth } from '../context/AuthContext';
-import { Button } from "@/Components/ui/button";
-import { Input } from "@/Components/ui/Input";
-import { Label } from "@/Components/ui/Label";
+import AuthBackground from '@/Components/AuthBackground';
 
 const Signup = () => {
-const navigate = useNavigate();
-const [accountType, setAccountType] = useState('client');
-const { setUser, setIsAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [accountType, setAccountType] = useState('client');
+  const { setUser, setIsAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -35,7 +33,6 @@ const { setUser, setIsAuthenticated } = useAuth();
   const validateForm = () => {
     const newErrors = {};
 
-    // Basic validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -52,7 +49,7 @@ const { setUser, setIsAuthenticated } = useAuth();
       newErrors.password = 'Password is required';
     } else {
       const passwordErrors = [];
-      
+
       if (formData.password.length < 8) {
         passwordErrors.push('at least 8 characters');
       }
@@ -68,7 +65,7 @@ const { setUser, setIsAuthenticated } = useAuth();
       if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]/.test(formData.password)) {
         passwordErrors.push('one special character');
       }
-      
+
       if (passwordErrors.length > 0) {
         newErrors.password = `Password must contain ${passwordErrors.join(', ')}`;
       }
@@ -78,7 +75,6 @@ const { setUser, setIsAuthenticated } = useAuth();
       newErrors.password2 = 'Passwords do not match';
     }
 
-    // Lawyer-specific validation
     if (accountType === 'lawyer') {
       if (!formData.license_number.trim()) {
         newErrors.license_number = 'License Number is required for lawyers';
@@ -98,7 +94,6 @@ const { setUser, setIsAuthenticated } = useAuth();
       ...formData,
       [name]: value
     });
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -109,8 +104,7 @@ const { setUser, setIsAuthenticated } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate form before submission
+
     if (!validateForm()) {
       return;
     }
@@ -148,7 +142,7 @@ const { setUser, setIsAuthenticated } = useAuth();
 
       const response = await axios.post('/api/auth/signup/', payload);
       toast.success(response.data.message);
-      
+
       if (response.data.requires_verification) {
         navigate('/verify-otp', { state: { email: response.data.email } });
       } else {
@@ -156,15 +150,14 @@ const { setUser, setIsAuthenticated } = useAuth();
       }
     } catch (error) {
       console.error('Signup error:', error);
-      
+
       if (error.response) {
         const data = error.response.data;
-        
-        // Handle validation errors (field-specific)
+
         if (data && typeof data === 'object' && !data.error) {
           const fieldErrors = {};
           let hasFieldErrors = false;
-          
+
           Object.keys(data).forEach(key => {
             const value = data[key];
             if (Array.isArray(value)) {
@@ -175,14 +168,13 @@ const { setUser, setIsAuthenticated } = useAuth();
               hasFieldErrors = true;
             }
           });
-          
+
           if (hasFieldErrors) {
             setErrors(fieldErrors);
             return;
           }
         }
-        
-        // Handle general error messages
+
         let message = 'Signup failed. Please try again.';
         if (typeof data === 'string') {
           message = data;
@@ -191,7 +183,7 @@ const { setUser, setIsAuthenticated } = useAuth();
         } else if (data?.detail) {
           message = data.detail;
         }
-        
+
         toast.error(message);
       } else if (error.request) {
         toast.error('Unable to connect to server. Please check your internet connection.');
@@ -210,27 +202,23 @@ const { setUser, setIsAuthenticated } = useAuth();
         toast.error('Google authentication failed. Please try again.');
         return;
       }
-      
-      console.log('Sending token to backend:', tokenData);
+
       const response = await axios.post('/api/auth/google/', { token: tokenData.credential });
-      
-      console.log('Backend response:', response.data);
-      
-      // Store tokens and user data
+
       const { access, refresh } = response.data.tokens;
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
       setUser(response.data.user);
       setIsAuthenticated(true);
-      
+
       toast.success(response.data.message || 'Signup successful!');
       navigate('/');
     } catch (error) {
       console.error('Google signup error:', error);
-      
+
       if (error.response) {
-        const errorMsg = error.response.data?.error 
-          || error.response.data?.details 
+        const errorMsg = error.response.data?.error
+          || error.response.data?.details
           || error.response.data?.detail
           || 'Google signup failed. Please try again.';
         toast.error(errorMsg);
@@ -250,52 +238,57 @@ const { setUser, setIsAuthenticated } = useAuth();
     setLoading(false);
   };
 
+  const inputClass = "w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden py-8">
-      {/* Background gradients */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
-      
-      {/* Go back button */}
+      <AuthBackground />
+
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="absolute top-4 left-4 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 hover:bg-card/70 text-muted-foreground border border-border/50 shadow-lg backdrop-blur-md transition-all duration-200"
+        className="absolute top-4 left-4 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-muted text-muted-foreground border border-border transition-colors duration-150 text-sm font-medium"
       >
-        <span className="text-xl leading-none">←</span>
-        <span className="text-sm font-medium tracking-wide uppercase opacity-90">Go back</span>
+        <span className="text-lg leading-none">&larr;</span>
+        Go back
       </button>
-      
-      {/* Signup form card */}
-      <div className="w-full max-w-md p-8 space-y-6 bg-card/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-border/50 relative z-10 animate-fade-in">
-        <div className="text-center">
-          <div className="inline-block mb-4 px-4 py-2 bg-primary/20 rounded-full border border-primary/30">
+
+      <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-2xl shadow-2xl border border-border relative z-10">
+        <div className="text-center space-y-2">
+          <div className="inline-block mb-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
             <span className="text-primary text-sm font-semibold">Get Started</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-foreground mb-2 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+          <h1 className="text-4xl font-extrabold text-foreground">
             Create an account
           </h1>
-          <p className="text-muted-foreground">Enter your information to create an account</p>
+          <p className="text-muted-foreground text-sm">Enter your information to create an account</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button
+          <button
             type="button"
-            variant={accountType === 'client' ? 'default' : 'outline'}
-            className="w-full"
             onClick={() => setAccountType('client')}
             disabled={loading}
+            className={`w-full py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+              accountType === 'client'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-foreground border-border hover:bg-muted'
+            }`}
           >
             I'm a client
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            variant={accountType === 'lawyer' ? 'default' : 'outline'}
-            className="w-full"
             onClick={() => setAccountType('lawyer')}
             disabled={loading}
+            className={`w-full py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+              accountType === 'lawyer'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-transparent text-foreground border-border hover:bg-muted'
+            }`}
           >
             I'm a lawyer
-          </Button>
+          </button>
         </div>
 
         {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
@@ -306,14 +299,17 @@ const { setUser, setIsAuthenticated } = useAuth();
             disabled={loading}
           />
         ) : (
-          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-lg" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
+          <div className="text-center p-3 text-xs bg-muted text-muted-foreground border border-border rounded-xl" title="To enable, set VITE_GOOGLE_CLIENT_ID in your environment variables">
             Google Signup is unavailable (Missing Configuration)
           </div>
         )}
 
         <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card/90 px-4 text-muted-foreground">
+            <span className="bg-card px-4 text-muted-foreground">
               Or continue with
             </span>
           </div>
@@ -322,81 +318,75 @@ const { setUser, setIsAuthenticated } = useAuth();
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-foreground font-medium">Name</Label>
-              <Input 
-                id="name" 
-                name="name" 
-                placeholder="John Doe" 
-                required 
-                value={formData.name} 
-                onChange={handleInputChange} 
+              <label htmlFor="name" className="text-sm font-medium text-foreground">Name</label>
+              <input
+                id="name"
+                name="name"
+                placeholder="John Doe"
+                required
+                value={formData.name}
+                onChange={handleInputChange}
                 disabled={loading}
-                className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                className={inputClass}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground font-medium">Username</Label>
-              <Input 
-                id="username" 
-                name="username" 
-                placeholder="johndoe" 
-                required 
-                value={formData.username} 
-                onChange={handleInputChange} 
+              <label htmlFor="username" className="text-sm font-medium text-foreground">Username</label>
+              <input
+                id="username"
+                name="username"
+                placeholder="johndoe"
+                required
+                value={formData.username}
+                onChange={handleInputChange}
                 disabled={loading}
-                className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.username ? 'border-red-500' : ''}`}
+                className={`${inputClass} ${errors.username ? 'border-destructive focus:ring-destructive' : ''}`}
               />
               {errors.username && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-1">
-                  <p className="text-xs text-red-600 dark:text-red-400">{errors.username}</p>
-                </div>
+                <p className="text-xs text-destructive mt-1">{errors.username}</p>
               )}
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
-            <Input 
-              id="email" 
-              name="email" 
-              type="email" 
-              placeholder="m@example.com" 
-              required 
-              value={formData.email} 
-              onChange={handleInputChange} 
+            <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="m@example.com"
+              required
+              value={formData.email}
+              onChange={handleInputChange}
               disabled={loading}
-              className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.email ? 'border-red-500' : ''}`}
+              className={`${inputClass} ${errors.email ? 'border-destructive focus:ring-destructive' : ''}`}
             />
             {errors.email && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-1">
-                <p className="text-xs text-red-600 dark:text-red-400">{errors.email}</p>
-              </div>
+              <p className="text-xs text-destructive mt-1">{errors.email}</p>
             )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-            <Input 
-              id="password" 
-              name="password" 
-              type="password" 
+            <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
               placeholder="Enter password"
-              required 
-              value={formData.password} 
-              onChange={handleInputChange} 
+              required
+              value={formData.password}
+              onChange={handleInputChange}
               disabled={loading}
-              className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.password ? 'border-red-500' : ''}`}
+              className={`${inputClass} ${errors.password ? 'border-destructive focus:ring-destructive' : ''}`}
             />
             {errors.password && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mt-2">
-                <p className="text-xs text-red-600 dark:text-red-400 font-medium">{errors.password}</p>
-              </div>
+              <p className="text-xs text-destructive mt-1">{errors.password}</p>
             )}
-            <div className="bg-muted/50 border border-border/30 rounded-lg p-3 mt-2">
+            <div className="bg-muted/50 border border-border rounded-xl p-3 mt-2">
               <p className="text-xs font-semibold text-foreground mb-2">Password must contain:</p>
               <ul className="space-y-1 text-xs text-muted-foreground">
                 <li className={`flex items-center gap-2 ${formData.password.length >= 8 ? 'text-green-600 dark:text-green-400' : ''}`}>
-                  <span className={formData.password.length >= 8 ? '✓' : '○'}>
-                    {formData.password.length >= 8 ? '✓' : '○'}
-                  </span>
+                  <span>{formData.password.length >= 8 ? '✓' : '○'}</span>
                   At least 8 characters
                 </li>
                 <li className={`flex items-center gap-2 ${/[A-Z]/.test(formData.password) ? 'text-green-600 dark:text-green-400' : ''}`}>
@@ -418,44 +408,40 @@ const { setUser, setIsAuthenticated } = useAuth();
               </ul>
             </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="password2" className="text-foreground font-medium">Confirm Password</Label>
-            <Input 
-              id="password2" 
-              name="password2" 
-              type="password" 
+            <label htmlFor="password2" className="text-sm font-medium text-foreground">Confirm Password</label>
+            <input
+              id="password2"
+              name="password2"
+              type="password"
               placeholder="Enter password"
-              required 
-              value={formData.password2} 
-              onChange={handleInputChange} 
+              required
+              value={formData.password2}
+              onChange={handleInputChange}
               disabled={loading}
-              className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.password2 ? 'border-red-500' : ''}`}
+              className={`${inputClass} ${errors.password2 ? 'border-destructive focus:ring-destructive' : ''}`}
             />
             {errors.password2 && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                <p className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-2">
-                  <span>⚠</span>
-                  {errors.password2}
-                </p>
-              </div>
+              <p className="text-xs text-destructive mt-1">{errors.password2}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone" className="text-foreground font-medium">Phone (optional)</Label>
-            <Input
+            <label htmlFor="phone" className="text-sm font-medium text-foreground">Phone (optional)</label>
+            <input
               id="phone"
               name="phone"
               placeholder="+91-XXXXXXXXXX"
               value={formData.phone}
               onChange={handleInputChange}
               disabled={loading}
-              className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+              className={inputClass}
             />
           </div>
 
           {accountType === 'lawyer' && (
-            <div className="space-y-6 border border-border/60 rounded-xl p-4 bg-card/40">
+            <div className="space-y-6 border border-border rounded-xl p-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Professional Information</h2>
                 <p className="text-xs text-muted-foreground">
@@ -465,8 +451,8 @@ const { setUser, setIsAuthenticated } = useAuth();
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="license_number" className="text-foreground font-medium">License Number *</Label>
-                  <Input
+                  <label htmlFor="license_number" className="text-sm font-medium text-foreground">License Number *</label>
+                  <input
                     id="license_number"
                     name="license_number"
                     placeholder="State Bar License Number"
@@ -474,17 +460,15 @@ const { setUser, setIsAuthenticated } = useAuth();
                     value={formData.license_number}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.license_number ? 'border-red-500' : ''}`}
+                    className={`${inputClass} ${errors.license_number ? 'border-destructive focus:ring-destructive' : ''}`}
                   />
                   {errors.license_number && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-1">
-                      <p className="text-xs text-red-600 dark:text-red-400">{errors.license_number}</p>
-                    </div>
+                    <p className="text-xs text-destructive mt-1">{errors.license_number}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bar_council_id" className="text-foreground font-medium">Bar Council ID *</Label>
-                  <Input
+                  <label htmlFor="bar_council_id" className="text-sm font-medium text-foreground">Bar Council ID *</label>
+                  <input
                     id="bar_council_id"
                     name="bar_council_id"
                     placeholder="Bar Council Registration ID"
@@ -492,32 +476,30 @@ const { setUser, setIsAuthenticated } = useAuth();
                     value={formData.bar_council_id}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className={`bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 ${errors.bar_council_id ? 'border-red-500' : ''}`}
+                    className={`${inputClass} ${errors.bar_council_id ? 'border-destructive focus:ring-destructive' : ''}`}
                   />
                   {errors.bar_council_id && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-1">
-                      <p className="text-xs text-red-600 dark:text-red-400">{errors.bar_council_id}</p>
-                    </div>
+                    <p className="text-xs text-destructive mt-1">{errors.bar_council_id}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="education" className="text-foreground font-medium">Education</Label>
-                  <Input
+                  <label htmlFor="education" className="text-sm font-medium text-foreground">Education</label>
+                  <input
                     id="education"
                     name="education"
                     placeholder="LLB, LLM..."
                     value={formData.education}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="experience_years" className="text-foreground font-medium">Years of Experience</Label>
-                  <Input
+                  <label htmlFor="experience_years" className="text-sm font-medium text-foreground">Years of Experience</label>
+                  <input
                     id="experience_years"
                     name="experience_years"
                     type="number"
@@ -526,53 +508,53 @@ const { setUser, setIsAuthenticated } = useAuth();
                     value={formData.experience_years}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="law_firm" className="text-foreground font-medium">Law Firm / Practice</Label>
-                  <Input
+                  <label htmlFor="law_firm" className="text-sm font-medium text-foreground">Law Firm / Practice</label>
+                  <input
                     id="law_firm"
                     name="law_firm"
                     placeholder="Firm name or Independent"
                     value={formData.law_firm}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                    className={inputClass}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="consultation_fee" className="text-foreground font-medium">Consultation Fee</Label>
-                  <Input
+                  <label htmlFor="consultation_fee" className="text-sm font-medium text-foreground">Consultation Fee</label>
+                  <input
                     id="consultation_fee"
                     name="consultation_fee"
                     placeholder="e.g. ₹1500/hour"
                     value={formData.consultation_fee}
                     onChange={handleInputChange}
                     disabled={loading}
-                    className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                    className={inputClass}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="specializations" className="text-foreground font-medium">Specializations</Label>
-                <Input
+                <label htmlFor="specializations" className="text-sm font-medium text-foreground">Specializations</label>
+                <input
                   id="specializations"
                   name="specializations"
                   placeholder="Separate with commas e.g. Corporate Law, Family Law"
                   value={formData.specializations}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                  className={inputClass}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio" className="text-foreground font-medium">Professional Bio</Label>
+                <label htmlFor="bio" className="text-sm font-medium text-foreground">Professional Bio</label>
                 <textarea
                   id="bio"
                   name="bio"
@@ -581,40 +563,47 @@ const { setUser, setIsAuthenticated } = useAuth();
                   value={formData.bio}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="w-full rounded-md border border-border/50 bg-input text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300 p-3"
+                  className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="verification_documents" className="text-foreground font-medium">Verification Documents</Label>
-                <Input
+                <label htmlFor="verification_documents" className="text-sm font-medium text-foreground">Verification Documents</label>
+                <input
                   id="verification_documents"
                   name="verification_documents"
                   placeholder="Links to certifications or proofs (comma separated URLs)"
                   value={formData.verification_documents}
                   onChange={handleInputChange}
                   disabled={loading}
-                  className="bg-input border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-primary/20 transition-all duration-300"
+                  className={inputClass}
                 />
               </div>
             </div>
           )}
 
-          <Button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-foreground shadow-lg shadow-primary/50 hover:shadow-xl hover:shadow-primary/60 transition-all duration-300" 
+          <button
+            type="submit"
             disabled={loading}
+            className="w-full py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? 'Creating account...' : 'Create account'}
-          </Button>
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                Creating account...
+              </>
+            ) : (
+              'Create account'
+            )}
+          </button>
         </form>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-primary hover:text-primary/80 hover:underline transition-colors duration-200">
+          <Link to="/login" className="font-medium text-primary hover:text-primary/80 hover:underline transition-colors">
             Sign in
           </Link>
-        </div>
+        </p>
       </div>
     </div>
   );
