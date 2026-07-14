@@ -96,6 +96,14 @@ const DocumentAnalyzer = () => {
   const [showFullSummary, setShowFullSummary] = useState(false); // Collapsible top bar summary toggle
   const [chatOpen, setChatOpen] = useState(true); // Collapsible chat drawer
 
+  // Document Comparison States
+  const [analyzerMode, setAnalyzerMode] = useState('single'); // 'single' | 'compare'
+  const [fileA, setFileA] = useState(null);
+  const [fileB, setFileB] = useState(null);
+  const [compareResult, setCompareResult] = useState(null);
+  const [comparing, setComparing] = useState(false);
+  const [compareError, setCompareError] = useState('');
+
 
   const resetForNewDocument = () => {
     setUploadedFile(null);
@@ -275,6 +283,32 @@ const DocumentAnalyzer = () => {
       setHighRiskClauses([]);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCompareDocuments = async () => {
+    if (!fileA || !fileB) {
+      setCompareError('Please select both documents to compare.');
+      return;
+    }
+    setComparing(true);
+    setCompareError('');
+    try {
+      const formData = new FormData();
+      formData.append('document_a', fileA);
+      formData.append('document_b', fileB);
+      
+      const response = await axios.post('/api/summarizer/compare/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setCompareResult(response.data);
+    } catch (err) {
+      console.error('Comparison error:', err);
+      setCompareError(err.response?.data?.error || 'Failed to compare documents. Please try again.');
+    } finally {
+      setComparing(false);
     }
   };
 
