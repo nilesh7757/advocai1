@@ -92,3 +92,6 @@ class LawyerProfileEditSerializer(serializers.Serializer):
     consultation_fee = serializers.CharField(required=False, allow_blank=True)
     education = serializers.CharField(required=False, allow_blank=True)
     law_firm = serializers.CharField(required=False, allow_blank=True)
+    license_number = serializers.CharField(required=False, allow_blank=True)
+    bar_council_id = serializers.CharField(required=False, allow_blank=True)
+    verification_documents = serializers.ListField(child=serializers.CharField(), required=False)

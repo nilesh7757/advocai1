@@ -1,5 +1,6 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -22,6 +23,7 @@ from .serializers import (
     LawyerReviewSerializer,
 )
 from authentication.serializers import UserSerializer
+from utils.permissions import IsAdminUser
 
 
 def _annotate_rating(data, lawyer_user):
@@ -604,6 +606,21 @@ def my_lawyer_profile_view(request):
         profile.education = data['education']
     if 'law_firm' in data:
         profile.law_firm = data['law_firm']
+    if 'license_number' in data:
+        profile.license_number = data['license_number']
+    if 'bar_council_id' in data:
+        profile.bar_council_id = data['bar_council_id']
+    if 'verification_documents' in data:
+        profile.verification_documents = data['verification_documents']
+
+    # Update verification status from 'not_submitted' or 'rejected' to 'pending' upon onboarding/resubmission
+    if profile.verification_status in ['not_submitted', 'rejected']:
+        has_license = bool(data.get('license_number') or profile.license_number)
+        has_bar_id = bool(data.get('bar_council_id') or profile.bar_council_id)
+        if has_license and has_bar_id:
+            profile.verification_status = 'pending'
+            request.user.lawyer_verification_status = 'pending'
+            request.user.save()
 
     profile.save()
     return Response(LawyerProfileSerializer(profile).data)
@@ -680,3 +697,234 @@ def export_consultations_view(request):
         writer.writerow([client_name, client_email, created, pref_time, case_status, message])
 
     return response
+
+
+# ==========================================
+# Admin Endpoints (Lawyer verifications & Platform Stats)
+# ==========================================
+
+def _serialize_lawyer_profile(profile):
+    user = profile.user
+    return {
+        'lawyer_user_id': str(user.id) if user else None,
+        'name': getattr(user, 'name', '') or (user.username if user else ''),
+        'email': user.email if user else '',
+        'username': user.username if user else '',
+        'phone': profile.phone,
+        'license_number': profile.license_number,
+        'bar_council_id': profile.bar_council_id,
+        'education': profile.education,
+        'experience_years': profile.experience_years,
+        'verification_documents': profile.verification_documents,
+        'verification_status': profile.verification_status,
+        'verification_notes': getattr(profile, 'verification_notes', ''),
+        'verified_at': profile.verified_at.isoformat() if profile.verified_at else None,
+        'created_at': profile.created_at.isoformat() if getattr(profile, 'created_at', None) else None,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_pending_lawyers(request):
+    """List all LawyerProfiles with verification_status='pending'"""
+    pending_profiles = LawyerProfile.objects(verification_status='pending')
+    data = [_serialize_lawyer_profile(p) for p in pending_profiles]
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def admin_verify_lawyer(request, lawyer_user_id):
+    """Approve or reject a lawyer verification request"""
+    status_param = request.data.get('status')
+    notes = request.data.get('notes', '').strip()
+
+    if status_param not in ['approved', 'rejected']:
+        return Response({'error': 'Invalid status. Must be approved or rejected.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if status_param == 'rejected' and not notes:
+        return Response({'error': 'Rejection notes are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects(id=lawyer_user_id).first()
+    except Exception:
+        user = None
+
+    if not user or user.role != 'lawyer':
+        return Response({'error': 'Lawyer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    profile = LawyerProfile.objects(user=user).first()
+    if not profile:
+        return Response({'error': 'Lawyer profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Update status
+    from django.utils import timezone
+    from authentication.models import Notification
+
+    if status_param == 'approved':
+        profile.verification_status = 'approved'
+        profile.verified_at = timezone.now()
+        profile.verification_notes = notes
+        user.lawyer_verification_status = 'approved'
+        user.is_lawyer_verified = True
+    else:
+        profile.verification_status = 'rejected'
+        profile.verified_at = None
+        profile.verification_notes = notes
+        user.lawyer_verification_status = 'rejected'
+        user.is_lawyer_verified = False
+
+    profile.save()
+    user.save()
+
+    # Send a notification using the existing Notification model
+    try:
+        Notification(
+            recipient=user,
+            sender=request.user,
+            notification_type='lawyer_verification',
+            document_id='system',
+            message=f"Your lawyer verification status has been updated to {status_param}." + (f" Reason: {notes}" if notes else "")
+        ).save()
+    except Exception as e:
+        print(f"Error creating notification: {e}")
+
+    return Response({'message': f'Lawyer status updated to {status_param}.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_all_lawyers(request):
+    """List all lawyers regardless of status (approved/pending/rejected)"""
+    profiles = LawyerProfile.objects.all()
+    data = [_serialize_lawyer_profile(p) for p in profiles]
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_stats(request):
+    """Get platform-wide admin statistics"""
+    from document_summarizer.models import DocumentSession
+    from documents.mongo_client import conversations_collection
+
+    total_users = User.objects.count()
+    
+    # Lawyer counts by verification status
+    approved_lawyers = LawyerProfile.objects(verification_status='approved').count()
+    pending_lawyers = LawyerProfile.objects(verification_status='pending').count()
+    rejected_lawyers = LawyerProfile.objects(verification_status='rejected').count()
+
+    # Document counts
+    try:
+        total_created = conversations_collection.count_documents({})
+    except Exception:
+        total_created = 0
+
+    try:
+        total_analyzed = DocumentSession.objects.count()
+    except Exception:
+        total_analyzed = 0
+
+    total_connections = LawyerConnectionRequest.objects.count()
+    total_reviews = LawyerReview.objects.count()
+
+    stats = {
+        'total_users': total_users,
+        'lawyers': {
+            'approved': approved_lawyers,
+            'pending': pending_lawyers,
+            'rejected': rejected_lawyers,
+            'total': approved_lawyers + pending_lawyers + rejected_lawyers
+        },
+        'documents': {
+            'created': total_created,
+            'analyzed': total_analyzed,
+            'total': total_created + total_analyzed
+        },
+        'total_connection_requests': total_connections,
+        'total_reviews': total_reviews
+    }
+
+    return Response(stats, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAdminUser])
+def admin_manage_role(request):
+    """Allows the super admin to view admins and promote/demote users to admin or superadmin status"""
+    # Check if request.user is the super admin
+    if request.user.email.lower() != 'nileshmori7757@gmail.com' and not getattr(request.user, 'is_superuser', False):
+        return Response({'error': 'Only the super admin can perform this action.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        admins = User.objects(role='admin')
+        data = [{
+            'id': str(u.id),
+            'username': u.username,
+            'email': u.email,
+            'name': getattr(u, 'name', ''),
+            'is_superuser': getattr(u, 'is_superuser', False)
+        } for u in admins]
+        return Response(data, status=status.HTTP_200_OK)
+
+    target_email = request.data.get('email')
+    target_role = request.data.get('role')
+    is_superuser_param = request.data.get('is_superuser')
+
+    if not target_email:
+        return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects(email=target_email.lower()).first()
+    except Exception:
+        user = None
+
+    if not user:
+        return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Perform updates
+    if target_role:
+        if target_role not in ['client', 'lawyer', 'admin']:
+            return Response({'error': 'Invalid role.'}, status=status.HTTP_400_BAD_REQUEST)
+        user.role = target_role
+
+    if is_superuser_param is not None:
+        user.is_superuser = bool(is_superuser_param)
+
+    user.save()
+    return Response({
+        'message': f'User {target_email} updated successfully.',
+        'role': user.role,
+        'is_superuser': user.is_superuser
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def upload_verification_doc(request):
+    """Upload verification document to Cloudinary"""
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'error': 'No file was uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate file type (accept PDF, JPG, PNG only)
+    filename = uploaded_file.name.lower()
+    allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
+    if not any(filename.endswith(ext) for ext in allowed_extensions):
+        return Response({'error': 'Invalid file type. Only PDF, JPG, JPEG, and PNG are allowed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate file size (limit 10MB)
+    max_size = 10 * 1024 * 1024 # 10MB
+    if uploaded_file.size > max_size:
+        return Response({'error': 'File size exceeds 10MB limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(uploaded_file)
+        secure_url = upload_result.get('secure_url')
+        return Response({'secure_url': secure_url}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error uploading to Cloudinary: {e}")
+        return Response({'error': f'Upload failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

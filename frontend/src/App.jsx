@@ -29,6 +29,8 @@ import Terms from "./pages/Terms";
 import Disclaimer from "./pages/Disclaimer";
 import ChatList from "./pages/ChatList";
 import Chat from "./pages/Chat";
+import AdminDashboard from "./pages/AdminDashboard";
+import LawyerOnboarding from "./pages/LawyerOnboarding";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 function AppContent() {
@@ -134,6 +136,22 @@ function AppContent() {
             element={(
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/admin"
+            element={(
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/lawyer-onboarding"
+            element={(
+              <ProtectedRoute>
+                <LawyerOnboarding />
               </ProtectedRoute>
             )}
           />

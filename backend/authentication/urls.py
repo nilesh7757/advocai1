@@ -23,7 +23,11 @@ from .views import (
     notifications_view,
     mark_notification_read_view,
     search_users_view,
-    profile_stats_view
+    profile_stats_view,
+    admin_list_users,
+    admin_warn_user,
+    admin_ban_user,
+    admin_unban_user,
 )
 
 urlpatterns = [
@@ -51,4 +55,8 @@ urlpatterns = [
     path('notifications/', notifications_view, name='notifications'),
     path('notifications/<str:notification_id>/read/', mark_notification_read_view, name='mark_notification_read'),
     path('users/', search_users_view, name='search_users'),
+    path('admin/users/', admin_list_users, name='admin-list-users'),
+    path('admin/users/<str:user_id>/warn/', admin_warn_user, name='admin-warn-user'),
+    path('admin/users/<str:user_id>/ban/', admin_ban_user, name='admin-ban-user'),
+    path('admin/users/<str:user_id>/unban/', admin_unban_user, name='admin-unban-user'),
 ]

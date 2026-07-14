@@ -16,9 +16,16 @@ from .views import (
     my_lawyer_profile_view,
     update_quick_reply_templates_view,
     export_consultations_view,
+    admin_pending_lawyers,
+    admin_verify_lawyer,
+    admin_all_lawyers,
+    admin_stats,
+    admin_manage_role,
+    upload_verification_doc,
 )
 
 urlpatterns = [
+    path('upload-verification-doc/', upload_verification_doc, name='upload_verification_doc'),
     path('', lawyer_list_view, name='lawyer_list'),
     path('match/', lawyer_match_view, name='lawyer_match'),
     path('dashboard/', lawyer_dashboard_view, name='lawyer_dashboard'),
@@ -32,6 +39,11 @@ urlpatterns = [
     path('connections/<str:connection_id>/review/', submit_review_view, name='submit_review'),
     path('connections/<str:connection_id>/review/check/', check_review_status_view, name='check_review'),
     path('connections/<str:connection_id>/case/', update_case_status_view, name='update_case_status'),
+    path('admin/pending-lawyers/', admin_pending_lawyers, name='admin_pending_lawyers'),
+    path('admin/lawyers/<str:lawyer_user_id>/verify/', admin_verify_lawyer, name='admin_verify_lawyer'),
+    path('admin/all-lawyers/', admin_all_lawyers, name='admin_all_lawyers'),
+    path('admin/stats/', admin_stats, name='admin_stats'),
+    path('admin/manage-admin-role/', admin_manage_role, name='admin_manage_role'),
     path('<str:lawyer_id>/', lawyer_detail_view, name='lawyer_detail'),
     path('<str:lawyer_id>/connect/', connect_with_lawyer_view, name='connect_lawyer'),
     path('<str:lawyer_id>/reviews/', lawyer_reviews_view, name='lawyer_reviews'),

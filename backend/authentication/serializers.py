@@ -227,31 +227,6 @@ class RegisterSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        # Validate lawyer-specific fields
-        role = attrs.get("role", "client")
-        if role == "lawyer":
-            missing_fields = []
-            field_labels = {
-                "license_number": "License Number",
-                "bar_council_id": "Bar Council ID",
-            }
-
-            license_number = attrs.get("license_number", "").strip()
-            bar_council_id = attrs.get("bar_council_id", "").strip()
-
-            if not license_number:
-                missing_fields.append("license_number")
-            if not bar_council_id:
-                missing_fields.append("bar_council_id")
-
-            if missing_fields:
-                error_dict = {}
-                for field in missing_fields:
-                    error_dict[field] = (
-                        f"{field_labels[field]} is required for lawyer registration."
-                    )
-                raise serializers.ValidationError(error_dict)
-
         return attrs
 
     def create(self, validated_data):
@@ -259,15 +234,9 @@ class RegisterSerializer(serializers.Serializer):
         validated_data.pop("password2")
         role = validated_data.pop("role", "client")
         phone = validated_data.pop("phone", "")
-        license_number = validated_data.pop("license_number", "")
-        bar_council_id = validated_data.pop("bar_council_id", "")
-        education = validated_data.pop("education", "")
-        experience_years = validated_data.pop("experience_years", 0)
-        law_firm = validated_data.pop("law_firm", "")
-        specializations = validated_data.pop("specializations", []) or []
-        consultation_fee = validated_data.pop("consultation_fee", "")
-        bio = validated_data.pop("bio", "")
-        verification_documents = validated_data.pop("verification_documents", []) or []
+        # Remove any other professional fields that might be passed (ignored for now)
+        for f in ['license_number', 'bar_council_id', 'education', 'experience_years', 'law_firm', 'specializations', 'consultation_fee', 'bio', 'verification_documents']:
+            validated_data.pop(f, None)
 
         user = User.create_user(
             email=validated_data["email"],
@@ -279,23 +248,23 @@ class RegisterSerializer(serializers.Serializer):
         )
 
         if role == "lawyer":
-            user.lawyer_verification_status = "pending"
+            user.lawyer_verification_status = "not_submitted"
             user.is_lawyer_verified = False
             user.save()
             LawyerProfile.objects(user=user).delete()
             LawyerProfile.objects.create(
                 user=user,
                 phone=phone,
-                education=education,
-                experience_years=experience_years or 0,
-                law_firm=law_firm,
-                specializations=specializations,
-                license_number=license_number,
-                bar_council_id=bar_council_id,
-                consultation_fee=consultation_fee,
-                bio=bio,
-                verification_documents=verification_documents,
-                verification_status="pending",
+                education="",
+                experience_years=0,
+                law_firm="",
+                specializations=[],
+                license_number="",
+                bar_council_id="",
+                consultation_fee="",
+                bio="",
+                verification_documents=[],
+                verification_status="not_submitted",
             )
         else:
             user.lawyer_verification_status = "not_applicable"

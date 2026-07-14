@@ -16,16 +16,7 @@ const Signup = () => {
     email: '',
     password: '',
     password2: '',
-    phone: '',
-    license_number: '',
-    bar_council_id: '',
-    education: '',
-    experience_years: '',
-    law_firm: '',
-    specializations: '',
-    consultation_fee: '',
-    bio: '',
-    verification_documents: ''
+    phone: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -75,15 +66,6 @@ const Signup = () => {
       newErrors.password2 = 'Passwords do not match';
     }
 
-    if (accountType === 'lawyer') {
-      if (!formData.license_number.trim()) {
-        newErrors.license_number = 'License Number is required for lawyers';
-      }
-      if (!formData.bar_council_id.trim()) {
-        newErrors.bar_council_id = 'Bar Council ID is required for lawyers';
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -117,28 +99,6 @@ const Signup = () => {
         ...formData,
         role: accountType,
       };
-
-      if (accountType === 'lawyer') {
-        payload.experience_years = formData.experience_years ? Number(formData.experience_years) : 0;
-        payload.specializations = formData.specializations
-          ? formData.specializations.split(',').map(item => item.trim()).filter(Boolean)
-          : [];
-        payload.verification_documents = formData.verification_documents
-          ? formData.verification_documents.split(',').map(item => item.trim()).filter(Boolean)
-          : [];
-      } else {
-        [
-          'license_number',
-          'bar_council_id',
-          'education',
-          'experience_years',
-          'law_firm',
-          'specializations',
-          'consultation_fee',
-          'bio',
-          'verification_documents',
-        ].forEach((field) => delete payload[field]);
-      }
 
       const response = await axios.post('/api/auth/signup/', payload);
       toast.success(response.data.message);
@@ -440,147 +400,7 @@ const Signup = () => {
             />
           </div>
 
-          {accountType === 'lawyer' && (
-            <div className="space-y-6 border border-border rounded-xl p-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Professional Information</h2>
-                <p className="text-xs text-muted-foreground">
-                  Provide accurate information so our team can verify your credentials.
-                </p>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="license_number" className="text-sm font-medium text-foreground">License Number *</label>
-                  <input
-                    id="license_number"
-                    name="license_number"
-                    placeholder="State Bar License Number"
-                    required={accountType === 'lawyer'}
-                    value={formData.license_number}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={`${inputClass} ${errors.license_number ? 'border-destructive focus:ring-destructive' : ''}`}
-                  />
-                  {errors.license_number && (
-                    <p className="text-xs text-destructive mt-1">{errors.license_number}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="bar_council_id" className="text-sm font-medium text-foreground">Bar Council ID *</label>
-                  <input
-                    id="bar_council_id"
-                    name="bar_council_id"
-                    placeholder="Bar Council Registration ID"
-                    required={accountType === 'lawyer'}
-                    value={formData.bar_council_id}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={`${inputClass} ${errors.bar_council_id ? 'border-destructive focus:ring-destructive' : ''}`}
-                  />
-                  {errors.bar_council_id && (
-                    <p className="text-xs text-destructive mt-1">{errors.bar_council_id}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="education" className="text-sm font-medium text-foreground">Education</label>
-                  <input
-                    id="education"
-                    name="education"
-                    placeholder="LLB, LLM..."
-                    value={formData.education}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="experience_years" className="text-sm font-medium text-foreground">Years of Experience</label>
-                  <input
-                    id="experience_years"
-                    name="experience_years"
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 5"
-                    value={formData.experience_years}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label htmlFor="law_firm" className="text-sm font-medium text-foreground">Law Firm / Practice</label>
-                  <input
-                    id="law_firm"
-                    name="law_firm"
-                    placeholder="Firm name or Independent"
-                    value={formData.law_firm}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="consultation_fee" className="text-sm font-medium text-foreground">Consultation Fee</label>
-                  <input
-                    id="consultation_fee"
-                    name="consultation_fee"
-                    placeholder="e.g. ₹1500/hour"
-                    value={formData.consultation_fee}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="specializations" className="text-sm font-medium text-foreground">Specializations</label>
-                <input
-                  id="specializations"
-                  name="specializations"
-                  placeholder="Separate with commas e.g. Corporate Law, Family Law"
-                  value={formData.specializations}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="bio" className="text-sm font-medium text-foreground">Professional Bio</label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  rows="4"
-                  placeholder="Describe your experience, notable cases, or approach to clients."
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-background border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="verification_documents" className="text-sm font-medium text-foreground">Verification Documents</label>
-                <input
-                  id="verification_documents"
-                  name="verification_documents"
-                  placeholder="Links to certifications or proofs (comma separated URLs)"
-                  value={formData.verification_documents}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                  className={inputClass}
-                />
-              </div>
-            </div>
-          )}
 
           <button
             type="submit"

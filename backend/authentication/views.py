@@ -34,6 +34,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from .otp_utils import create_and_send_otp, is_otp_valid, clear_otp
+from utils.permissions import IsAdminUser
 
 
 def get_tokens_for_user(user):
@@ -386,6 +387,11 @@ def google_auth_view(request):
         try:
             user = User.objects(email=email).first()
             if user:
+                if not user.is_active:
+                    return Response(
+                        {"error": "This account has been banned/deactivated. Please contact support."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
                 # Update Google ID if not set
                 if not user.google_id:
                     user.google_id = google_id
@@ -1227,3 +1233,207 @@ def search_users_view(request):
         return Response(serialized, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==========================================
+# Admin Warning and Ban Endpoints
+# ==========================================
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_list_users(request):
+    """List all users for admin browsing with search and status filters, paginated"""
+    search_query = request.query_params.get('search', '').strip()
+    status_filter = request.query_params.get('status', '').strip()
+    page = int(request.query_params.get('page', 1))
+    page_size = int(request.query_params.get('page_size', 10))
+
+    users = User.objects.all()
+
+    if search_query:
+        from mongoengine.queryset.visitor import Q
+        users = users.filter(Q(email__icontains=search_query) | Q(username__icontains=search_query) | Q(name__icontains=search_query))
+
+    if status_filter == 'banned':
+        users = users.filter(is_active=False)
+    elif status_filter == 'active':
+        users = users.filter(is_active=True)
+
+    total_count = users.count()
+    
+    # Paginate
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated_users = users.order_by('-date_joined')[start:end]
+
+    data = [{
+        'id': str(u.id),
+        'username': u.username,
+        'email': u.email,
+        'name': getattr(u, 'name', ''),
+        'role': u.role,
+        'is_active': u.is_active,
+        'warning_count': getattr(u, 'warning_count', 0),
+        'warnings': getattr(u, 'warnings', []) or [],
+        'ban_reason': getattr(u, 'ban_reason', ''),
+        'date_joined': u.date_joined.isoformat() if u.date_joined else None,
+    } for u in paginated_users]
+
+    return Response({
+        'count': total_count,
+        'page': page,
+        'page_size': page_size,
+        'results': data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_warn_user(request, user_id):
+    """Issue a warning to a user, auto-banning at 3 strikes"""
+    reason = request.data.get('reason', '').strip()
+    if not reason:
+        return Response({'error': 'Warning reason is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects(id=user_id).first()
+    except Exception:
+        user = None
+
+    if not user:
+        return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Don't allow warning/banning yourself
+    if str(user.id) == str(request.user.id):
+        return Response({'error': 'You cannot issue warnings to yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Append warning
+    warning_entry = {
+        'reason': reason,
+        'issued_by': request.user.username,
+        'issued_at': datetime.utcnow().isoformat()
+    }
+    
+    if not hasattr(user, 'warnings') or user.warnings is None:
+        user.warnings = []
+        
+    user.warnings.append(warning_entry)
+    user.warning_count = len(user.warnings)
+
+    auto_banned = False
+    if user.warning_count >= 3:
+        user.is_active = False
+        user.ban_reason = "Automatically banned after 3 warnings."
+        auto_banned = True
+
+    user.save()
+
+    # Send Notification
+    try:
+        from authentication.models import Notification
+        msg = f"You have been issued a warning for: {reason}."
+        if auto_banned:
+            msg += " Your account has been automatically banned due to reaching 3 strikes."
+            
+        Notification(
+            recipient=user,
+            sender=request.user,
+            notification_type='warning',
+            document_id='system',
+            message=msg
+        ).save()
+    except Exception as e:
+        print(f"Error creating warning notification: {e}")
+
+    return Response({
+        'message': 'Warning issued successfully.',
+        'warning_count': user.warning_count,
+        'is_active': user.is_active,
+        'ban_reason': getattr(user, 'ban_reason', '')
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_ban_user(request, user_id):
+    """Directly ban a user"""
+    reason = request.data.get('reason', '').strip()
+    if not reason:
+        return Response({'error': 'Ban reason is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects(id=user_id).first()
+    except Exception:
+        user = None
+
+    if not user:
+        return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if str(user.id) == str(request.user.id):
+        return Response({'error': 'You cannot ban yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.is_active = False
+    user.ban_reason = reason
+    user.save()
+
+    # Send Notification
+    try:
+        from authentication.models import Notification
+        Notification(
+            recipient=user,
+            sender=request.user,
+            notification_type='ban',
+            document_id='system',
+            message=f"Your account has been banned. Reason: {reason}"
+        ).save()
+    except Exception as e:
+        print(f"Error creating ban notification: {e}")
+
+    return Response({
+        'message': 'User banned successfully.',
+        'is_active': user.is_active,
+        'ban_reason': user.ban_reason
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_unban_user(request, user_id):
+    """Unban a banned user and optionally reset warning strikes"""
+    reset_warnings = bool(request.data.get('reset_warnings', False))
+
+    try:
+        user = User.objects(id=user_id).first()
+    except Exception:
+        user = None
+
+    if not user:
+        return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    user.is_active = True
+    user.ban_reason = ''
+    
+    if reset_warnings:
+        user.warning_count = 0
+        user.warnings = []
+
+    user.save()
+
+    # Send Notification
+    try:
+        from authentication.models import Notification
+        Notification(
+            recipient=user,
+            sender=request.user,
+            notification_type='unban',
+            document_id='system',
+            message="Your account access has been reinstated by the administrator."
+        ).save()
+    except Exception as e:
+        print(f"Error creating unban notification: {e}")
+
+    return Response({
+        'message': 'User reinstated successfully.',
+        'is_active': user.is_active,
+        'warning_count': user.warning_count
+    }, status=status.HTTP_200_OK)

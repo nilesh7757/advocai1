@@ -10,4 +10,7 @@ urlpatterns = [
     path('conversations/<str:pk>/versions/<int:version_number>/download-pdf/', views.download_version_pdf, name='download-version-pdf'),
     path('conversations/<str:pk>/versions/<int:version_number>/download-docx/', views.download_version_docx, name='download-version-docx'),
     path('contact/', views.contact, name='contact'),
+    path('admin/queries/', views.admin_list_queries, name='admin-list-queries'),
+    path('admin/queries/<str:query_id>/reply/', views.admin_reply_query, name='admin-reply-query'),
+    path('admin/queries/<str:query_id>/close/', views.admin_close_query, name='admin-close-query'),
 ]

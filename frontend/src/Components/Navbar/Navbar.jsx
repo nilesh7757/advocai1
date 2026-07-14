@@ -113,6 +113,10 @@ export default function Navbar() {
     navLinks.push({ to: "/lawyer-dashboard", label: "Dashboard", title: "Lawyer Dashboard", requiresAuth: true, icon: LayoutDashboard });
   }
 
+  if (isAuthenticated && user?.role === 'admin') {
+    navLinks.push({ to: "/admin", label: "Admin", title: "Admin Dashboard", requiresAuth: true, icon: LayoutDashboard });
+  }
+
   return (
     <nav className={`fixed top-0 left-0 w-full z-50 border-b border-border h-[var(--navbar-height)] transition-colors duration-200 ${isMenuOpen ? 'bg-background' : 'bg-background/90 backdrop-blur-sm'}`}>
       <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 h-full">

@@ -55,6 +55,11 @@ class User(Document):
     # Token version for instant invalidation of all sessions
     token_version = IntField(default=0)
 
+    # Warning / Ban system
+    warning_count = IntField(default=0)
+    warnings = ListField(DictField())
+    ban_reason = StringField(default='')
+
     # Timestamps
     date_joined = DateTimeField(default=datetime.now)
     last_login = DateTimeField()

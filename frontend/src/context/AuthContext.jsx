@@ -77,8 +77,12 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       toast.success('Login successful!');
 
-      if (userData?.role === 'lawyer' && userData?.lawyer_verification_status !== 'approved') {
-        navigate('/lawyer-dashboard');
+      if (userData?.role === 'lawyer') {
+        if (userData?.lawyer_verification_status === 'not_submitted') {
+          navigate('/lawyer-onboarding');
+        } else {
+          navigate('/lawyer-dashboard');
+        }
       } else if (redirect) {
         navigate(`/${redirect === 'home' ? '' : redirect}`);
       } else {

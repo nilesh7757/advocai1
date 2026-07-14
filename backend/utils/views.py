@@ -12,6 +12,8 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 import cloudinary.uploader
 from documents.mongo_client import get_conversation_by_id
+from utils.models import SupportQuery
+from utils.permissions import IsAdminUser
 
 
 @api_view(['POST'])
@@ -419,4 +421,134 @@ def contact(request):
         else:
             return Response({'error': 'Failed to send message. Please try again later.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # Save the SupportQuery
+    try:
+        user_ref = request.user if request.user and request.user.is_authenticated else None
+        SupportQuery(
+            user=user_ref,
+            name=name,
+            email=email,
+            subject=subject,
+            message=message
+        ).save()
+    except Exception as e:
+        print(f"Error saving SupportQuery: {e}")
+
     return Response({'message': 'Your message has been sent. We typically respond within 1-2 business days.'}, status=status.HTTP_200_OK)
+
+
+# ==========================================
+# Admin Support Query Endpoints
+# ==========================================
+
+def _serialize_support_query(query):
+    user_data = None
+    if query.user:
+        user_data = {
+            'id': str(query.user.id),
+            'username': query.user.username,
+            'email': query.user.email,
+        }
+    return {
+        'id': str(query.id),
+        'user': user_data,
+        'name': query.name,
+        'email': query.email,
+        'subject': query.subject,
+        'message': query.message,
+        'status': query.status,
+        'admin_reply': getattr(query, 'admin_reply', '') or '',
+        'replied_by': str(query.replied_by.id) if query.replied_by else None,
+        'replied_at': query.replied_at.isoformat() if query.replied_at else None,
+        'created_at': query.created_at.isoformat() if query.created_at else None,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_list_queries(request):
+    """List all SupportQuery records, most recent first, with optional status filter"""
+    status_filter = request.query_params.get('status')
+    
+    queries = SupportQuery.objects.all()
+    if status_filter:
+        queries = queries.filter(status=status_filter)
+        
+    queries = queries.order_by('-created_at')
+    data = [_serialize_support_query(q) for q in queries]
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def admin_reply_query(request, query_id):
+    """Reply to a SupportQuery and notify or email the user"""
+    reply = request.data.get('reply', '').strip()
+    if not reply:
+        return Response({'error': 'Reply message is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        query = SupportQuery.objects(id=query_id).first()
+    except Exception:
+        query = None
+
+    if not query:
+        return Response({'error': 'Support query not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    from datetime import datetime
+    query.admin_reply = reply
+    query.replied_by = request.user
+    query.replied_at = datetime.utcnow()
+    query.status = 'answered'
+    query.save()
+
+    # If the query is associated with a registered User, send an in-app notification
+    if query.user:
+        try:
+            from authentication.models import Notification
+            Notification(
+                recipient=query.user,
+                sender=request.user,
+                notification_type='support_reply',
+                document_id='system',
+                message=f"Admin replied to your query '{query.subject}': {reply[:100]}..."
+            ).save()
+        except Exception as e:
+            print(f"Error creating in-app notification for query reply: {e}")
+    else:
+        # If anonymous submission, send an email to the provided email address
+        try:
+            email_subject = f"Re: {query.subject}"
+            email_message = (
+                f"Hi {query.name},\n\n"
+                f"Thank you for contacting AdvocAI Support. We have replied to your message:\n\n"
+                f"\"...{query.message}...\"\n\n"
+                f"--- Support Reply ---\n"
+                f"{reply}\n\n"
+                f"Best regards,\n"
+                f"AdvocAI Team"
+            )
+            from_email = settings.DEFAULT_FROM_EMAIL
+            send_mail(email_subject, email_message, from_email, [query.email])
+        except Exception as e:
+            print(f"Error sending email reply: {e}")
+
+    return Response(_serialize_support_query(query), status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def admin_close_query(request, query_id):
+    """Close a SupportQuery without replying"""
+    try:
+        query = SupportQuery.objects(id=query_id).first()
+    except Exception:
+        query = None
+
+    if not query:
+        return Response({'error': 'Support query not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    query.status = 'closed'
+    query.save()
+
+    return Response(_serialize_support_query(query), status=status.HTTP_200_OK)

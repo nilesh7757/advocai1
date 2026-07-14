@@ -34,9 +34,14 @@ const VerifyOtp = () => {
         const { access, refresh } = response.data.tokens;
         localStorage.setItem('access_token', access);
         localStorage.setItem('refresh_token', refresh);
-        setUser(response.data.user);
+        const userData = response.data.user;
+        setUser(userData);
         setIsAuthenticated(true);
-        navigate('/');
+        if (userData?.role === 'lawyer' && userData?.lawyer_verification_status === 'not_submitted') {
+          navigate('/lawyer-onboarding');
+        } else {
+          navigate('/');
+        }
       } else {
         navigate('/login');
       }

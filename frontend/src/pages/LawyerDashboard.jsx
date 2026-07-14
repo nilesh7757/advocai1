@@ -38,6 +38,7 @@ const statusColors = {
   pending: "text-muted-foreground",
   approved: "text-primary",
   rejected: "text-destructive",
+  not_submitted: "text-amber-500",
 };
 
 const monthNames = {
@@ -390,6 +391,20 @@ const LawyerDashboard = () => {
                 <ShieldAlert className="w-4 h-4" />
                 Update your credentials or contact support for assistance.
               </div>
+            )}
+            {verificationStatus === "not_submitted" && (
+              <div className="flex items-center gap-2 text-amber-500 text-sm">
+                <ShieldAlert className="w-4 h-4" />
+                Please complete your onboarding profile to request verification and list yourself publicly.
+              </div>
+            )}
+            {(verificationStatus === "not_submitted" || verificationStatus === "rejected") && (
+              <button
+                onClick={() => navigate('/lawyer-onboarding')}
+                className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/95 transition-colors cursor-pointer"
+              >
+                {verificationStatus === "rejected" ? "Update Onboarding Info" : "Complete Onboarding"}
+              </button>
             )}
           </div>
         </CardContent>

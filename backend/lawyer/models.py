@@ -23,15 +23,15 @@ class LawyerProfile(Document):
     experience_years = IntField(default=0)
     law_firm = StringField(max_length=255, default='')
     specializations = ListField(StringField(max_length=120), default=list)
-    license_number = StringField(max_length=120, required=True)
-    bar_council_id = StringField(max_length=120, required=True)
+    license_number = StringField(max_length=120, required=False, default='')
+    bar_council_id = StringField(max_length=120, required=False, default='')
     consultation_fee = StringField(max_length=120, default='')
     bio = StringField(default='')
     verification_documents = ListField(StringField(max_length=512), default=list)
     verification_status = StringField(
         max_length=32,
-        default='pending',
-        choices=('pending', 'approved', 'rejected'),
+        default='not_submitted',
+        choices=('not_submitted', 'pending', 'approved', 'rejected'),
     )
     verification_notes = StringField(default='')
     verified_at = DateTimeField()
