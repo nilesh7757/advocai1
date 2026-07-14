@@ -135,23 +135,21 @@ TEMPLATES = [
 WSGI_APPLICATION = 'legal_doc_generator.wsgi.application'
 ASGI_APPLICATION = 'legal_doc_generator.asgi.application' # Added for Django Channels
 
-if DEBUG:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer", # Use in-memory for development
-        },
-    }
-else:
-    # Production settings for CHANNEL_LAYERS using Redis
-    # You must set up a Redis server and provide the URL in the REDIS_URL environment variable
-    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/1')
+# Runs fully functional with zero external dependencies (no Redis, no Celery worker)
+# on a single free-tier instance. Set REDIS_URL to automatically enable real async
+# task processing, cross-instance WebSocket support, and distributed caching once
+# scaling beyond a single instance.
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [REDIS_URL],
-            },
+            "CONFIG": {"hosts": [REDIS_URL]},
         },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
     }
 
 
@@ -290,8 +288,14 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
 
 # Celery Configuration
+# If REDIS_URL is not set, run Celery tasks eagerly in-process so no external
+# worker/broker is required. When REDIS_URL is provided later, Celery will
+# automatically switch back to normal async behavior without code changes.
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+# Run tasks synchronously when REDIS_URL isn't provided (single-instance friendly)
+CELERY_TASK_ALWAYS_EAGER = os.getenv("REDIS_URL") is None
+CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -302,16 +306,25 @@ CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 50  # Restart worker after 50 tasks to prevent memory leaks
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Prevent worker from taking too many tasks
 
-# Cache Configuration (Redis for production, in-memory for development)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache' if not DEBUG else 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': os.getenv("REDIS_URL", "redis://localhost:6379/1") if not DEBUG else 'unique-snowflake',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'MAX_ENTRIES': 10000,  # Limit cache size to prevent memory leaks
-            'CULL_FREQUENCY': 4,   # Remove 1/4 of entries when max is reached
-        } if not DEBUG else {},
-        'TIMEOUT': 86400,  # Default timeout: 24 hours
+# Cache Configuration: use RedisCache when REDIS_URL provided, otherwise LocMemCache.
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'MAX_ENTRIES': 10000,
+                'CULL_FREQUENCY': 4,
+            },
+            'TIMEOUT': 86400,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'TIMEOUT': 86400,
+        }
+    }
