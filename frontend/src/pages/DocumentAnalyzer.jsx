@@ -68,6 +68,7 @@ const getReplacementClause = (clause) => (clause?.replacement_clause || clause?.
 const DocumentAnalyzer = () => {
   const fileInputRef = useRef(null);
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [summary, setSummary] = useState('');
   const [comprehensiveSummary, setComprehensiveSummary] = useState(null); // NEW: Structured detailed summary
   const [comprehensiveSummaryLoading, setComprehensiveSummaryLoading] = useState(false); // Loading state
@@ -98,6 +99,7 @@ const DocumentAnalyzer = () => {
 
   const resetForNewDocument = () => {
     setUploadedFile(null);
+    setSelectedFiles([]);
     setSummary('');
     setComprehensiveSummary(null);
     setComprehensiveSummaryLoading(false);
@@ -188,11 +190,21 @@ const DocumentAnalyzer = () => {
     setTimeout(() => setIsSummaryCopied(false), 2000); // Reset after 2 seconds
   };
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files?.[0] ?? null;
-    if (!file) return;
+  const handleSelectFiles = (filesList) => {
+    if (!filesList || filesList.length === 0) return;
+    const newFiles = Array.from(filesList);
+    setSelectedFiles((prev) => [...prev, ...newFiles]);
+    setError('');
+  };
 
-    setUploadedFile(file);
+  const handleRemoveFile = (indexToRemove) => {
+    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleAnalyzeDocuments = async () => {
+    if (selectedFiles.length === 0) return;
+
+    setUploadedFile(selectedFiles[0]);
     setError('');
     setUploading(true);
     setSummary('');
@@ -201,7 +213,7 @@ const DocumentAnalyzer = () => {
     setHighRiskClauses([]);
 
     try {
-      const response = await uploadDocumentApi(file);
+      const response = await uploadDocumentApi(selectedFiles);
 
       const previewHtml = response?.highlighted_preview ?? response?.highlightedPreview ?? '';
       const previewPlain = response?.preview_text ?? response?.previewText ?? '';
@@ -255,7 +267,6 @@ const DocumentAnalyzer = () => {
       }
     } catch (err) {
       console.error(err);
-      // better extraction of error text
       const message = err?.response?.data?.error || err?.message || 'Failed to upload document';
       setError(message);
       setUploadedFile(null);
@@ -283,14 +294,7 @@ const DocumentAnalyzer = () => {
     setDragActive(false);
     const files = event.dataTransfer.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      if (fileInputRef.current) {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        fileInputRef.current.files = dataTransfer.files;
-        // reuse same handler shape
-        handleFileUpload({ target: { files: dataTransfer.files } });
-      }
+      handleSelectFiles(files);
     }
   };
 
@@ -388,6 +392,8 @@ const DocumentAnalyzer = () => {
     setSessionId(session.id ?? session._id ?? `session-${Date.now()}`);
     setSidebarOpen(false);
     setLoading(true);
+    setSelectedFiles([]);
+    setUploadedFile(null);
     setSeverityFilter('All');
     setActiveClauseIndex(null);
     setShowFullSummary(false);
@@ -868,22 +874,32 @@ const DocumentAnalyzer = () => {
             </div>
 
             <div
-              className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 w-full cursor-pointer ${
-                dragActive ? 'border-primary bg-primary/10 scale-[1.02]' : uploadedFile ? 'border-primary/50 bg-card' : 'border-border hover:border-primary/50 hover:bg-muted/50 bg-card'
+              className={`relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 w-full ${
+                dragActive 
+                  ? 'border-primary bg-primary/10 scale-[1.02]' 
+                  : selectedFiles.length > 0 
+                    ? 'border-primary/50 bg-card' 
+                    : 'border-border hover:border-primary/50 hover:bg-muted/50 bg-card'
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => !uploading && fileInputRef.current && fileInputRef.current.click()}
+              onClick={(e) => {
+                if (uploading) return;
+                if (selectedFiles.length === 0 && fileInputRef.current) {
+                  fileInputRef.current.click();
+                }
+              }}
             >
               <input
                 id="file-upload"
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.docx,.txt"
-                onChange={handleFileUpload}
+                onChange={(e) => handleSelectFiles(e.target.files)}
                 className="hidden"
                 disabled={uploading}
+                multiple
               />
 
               <div className="p-8 sm:p-10 lg:p-12 text-center select-none">
@@ -891,27 +907,59 @@ const DocumentAnalyzer = () => {
                   <div className="space-y-4">
                     <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto" />
                     <div>
-                      <p className="text-base font-semibold text-foreground mb-1">Analyzing document terms...</p>
+                      <p className="text-base font-semibold text-foreground mb-1">Analyzing documents...</p>
                       <p className="text-xs text-muted-foreground">Extracting clauses and measuring liabilities</p>
                     </div>
                   </div>
-                ) : uploadedFile ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-primary/10 text-primary rounded-full w-16 h-16 mx-auto flex items-center justify-center border border-primary/20">
-                      <FileText className="w-8 h-8" />
+                ) : selectedFiles.length > 0 ? (
+                  <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-left space-y-2 max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Selected Files ({selectedFiles.length})</p>
+                      <div className="space-y-1.5">
+                        {selectedFiles.map((file, idx) => (
+                          <div 
+                            key={`${file.name}-${idx}`}
+                            className="flex items-center justify-between p-2 rounded-lg bg-muted border border-border text-xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                              <span className="font-medium text-foreground truncate">{file.name}</span>
+                              <span className="text-[10px] text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveFile(idx)}
+                              className="p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded transition-colors cursor-pointer"
+                              title="Remove File"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-base font-medium text-foreground mb-1">{uploadedFile.name}</p>
-                      <p className="text-xs text-primary font-semibold">✓ Ready for analysis</p>
+
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                        className="px-4 py-2 border border-border hover:bg-muted text-foreground rounded-lg font-medium text-xs transition-all cursor-pointer"
+                      >
+                        Add Files
+                      </button>
+                      <button
+                        onClick={handleAnalyzeDocuments}
+                        className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                      >
+                        Analyze Documents
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 cursor-pointer">
                     <div className="p-4 bg-primary/10 text-primary rounded-2xl border border-primary/20 flex items-center justify-center w-16 h-16 mx-auto">
                       <Upload className="w-8 h-8" />
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-foreground mb-1">Drag and drop your document here</p>
+                      <p className="text-base font-semibold text-foreground mb-1">Drag and drop your documents here</p>
                       <p className="text-xs text-muted-foreground mb-4">or click to browse your files</p>
                       <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
                         <span>Supports:</span>

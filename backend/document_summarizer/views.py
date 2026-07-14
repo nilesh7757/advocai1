@@ -2308,36 +2308,50 @@ def summarize_document(request):
         async_value = request.data.get('async', 'false')
         async_mode = str(async_value).lower() == 'true' if async_value else False
         
-        uploaded_file = request.FILES.get('document')
-        if not uploaded_file:
+        uploaded_files = request.FILES.getlist('documents')
+        
+        # Backward compatibility fallback
+        if not uploaded_files:
+            single_file = request.FILES.get('document')
+            if single_file:
+                uploaded_files = [single_file]
+                
+        if not uploaded_files:
             return Response({
                 'error': 'Please upload a document'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check file size (limit to 10MB)
-        if uploaded_file.size > 10 * 1024 * 1024:
-            return Response({
-                'error': 'File size exceeds 10MB limit.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Reset file pointer to beginning for reading content
-        uploaded_file.seek(0)
-
-        try:
-            text = extract_text_from_file(uploaded_file)
-            if text is None:
+        # Check file sizes (limit each to 10MB)
+        for uploaded_file in uploaded_files:
+            if uploaded_file.size > 10 * 1024 * 1024:
                 return Response({
-                    'error': 'Error extracting text from file.'
+                    'error': f'File {uploaded_file.name} exceeds 10MB limit.'
                 }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                'error': f'Error extracting text from file: {str(e)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-        if not text:
-            return Response({
-                'error': 'Unsupported file type. Please upload PDF, DOCX, or TXT'
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Extract and concatenate text from all files
+        texts_with_separators = []
+        for uploaded_file in uploaded_files:
+            uploaded_file.seek(0)
+            try:
+                file_text = extract_text_from_file(uploaded_file)
+                if file_text is None:
+                    return Response({
+                        'error': f'Error extracting text from file {uploaded_file.name}.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({
+                    'error': f'Error extracting text from file {uploaded_file.name}: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if not file_text:
+                return Response({
+                    'error': f'Unsupported file type for {uploaded_file.name}. Please upload PDF, DOCX, or TXT'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+            texts_with_separators.append(f"--- Document: {uploaded_file.name} ---\n{file_text}")
+
+        # Combined text
+        text = "\n\n".join(texts_with_separators)
 
         # Get user from JWT token
         user = request.user
@@ -2371,7 +2385,7 @@ def summarize_document(request):
                 'success': True,
                 'async': True,
                 'session_id': str(session.id),
-                'filename': uploaded_file.name,
+                'filename': uploaded_files[0].name,
                 'status': 'pending',
                 'message': 'Document queued for analysis. Check status endpoint for progress.'
             }, status=status.HTTP_202_ACCEPTED)

@@ -2,9 +2,15 @@ import axios from '../api/axios';
 
 console.log('API endpoints are set to use "api/summarizer/"');
 
-export const uploadDocument = async (file) => {
+export const uploadDocument = async (files) => {
   const formData = new FormData();
-  formData.append('document', file);
+  if (Array.isArray(files)) {
+    files.forEach((file) => {
+      formData.append('documents', file);
+    });
+  } else {
+    formData.append('documents', files);
+  }
 
   const response = await axios.post('api/summarizer/summarize/', formData, {
     headers: {
