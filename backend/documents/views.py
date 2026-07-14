@@ -24,13 +24,14 @@ def create_conversation_with_chat(request):
     """
     message = request.data.get('message')
     initial_document_content = request.data.get('document_content', '') # Can be empty for initial creation
+    jurisdiction = request.data.get('jurisdiction')
     
     if not message:
         return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         # Generate AI response for the initial message
-        ai_raw_response = get_gemini_response(message, initial_document_content)
+        ai_raw_response = get_gemini_response(message, initial_document_content, preferred_jurisdiction=jurisdiction)
         
         # Parse the AI response to extract document content
         ai_response_content = ""
@@ -101,6 +102,7 @@ def send_chat_message(request, pk):
     """
     message = request.data.get('message')
     document_content = request.data.get('document_content') # Current document content as context
+    jurisdiction = request.data.get('jurisdiction')
 
     if not message:
         return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,7 +113,7 @@ def send_chat_message(request, pk):
 
     try:
         # Generate AI response
-        ai_raw_response = get_gemini_response(message, document_content)
+        ai_raw_response = get_gemini_response(message, document_content, preferred_jurisdiction=jurisdiction)
 
         # Parse the AI response to extract document content
         ai_response_content = document_content if document_content else ""

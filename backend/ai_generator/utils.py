@@ -770,7 +770,7 @@ def build_legal_document_graph():
 # MAIN EXECUTION FUNCTION - Public API
 # ============================================================================
 
-def get_gemini_response(user_message: str, document_context: str = "", conversation_history: List[Dict] = None, signature_url: str = None):
+def get_gemini_response(user_message: str, document_context: str = "", conversation_history: List[Dict] = None, signature_url: str = None, preferred_jurisdiction: str = None):
     """
     Main function to generate AI responses using the stateful conversational agent.
     
@@ -779,6 +779,7 @@ def get_gemini_response(user_message: str, document_context: str = "", conversat
         document_context: Optional context about existing document
         conversation_history: Optional list of previous messages
         signature_url: Optional URL of uploaded signature
+        preferred_jurisdiction: Optional user chosen jurisdiction ('india' or 'generic')
     
     Returns:
         str: The AI's response
@@ -801,6 +802,10 @@ def get_gemini_response(user_message: str, document_context: str = "", conversat
     if signature_url:
         messages.append({"role": "system", "content": f"(System: The user has uploaded a signature at URL: {signature_url})"})
     
+    # Add preferred jurisdiction as system message if provided
+    if preferred_jurisdiction:
+        messages.append({"role": "system", "content": f"(System: The user preferred jurisdiction is explicitly set to: {preferred_jurisdiction})"})
+    
     messages.append({"role": "user", "content": full_message})
     
     # Initialize state
@@ -809,7 +814,7 @@ def get_gemini_response(user_message: str, document_context: str = "", conversat
         "current_intent": "",
         "document_type": "",
         "is_feasible": False,
-        "jurisdiction": "generic",
+        "jurisdiction": preferred_jurisdiction or "generic",
         "gathered_info": {},
         "needs_more_info": False,
         "user_wants_template": False,

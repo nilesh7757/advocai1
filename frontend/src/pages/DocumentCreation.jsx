@@ -57,6 +57,7 @@ const DocumentCreation = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [finalDocument, setFinalDocument] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [jurisdiction, setJurisdiction] = useState('india');
 
   const chatContainerRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -442,6 +443,7 @@ const DocumentCreation = () => {
       const payload = {
         message: chatMessage,
         document_content: finalDocument, // Send current document content as context
+        jurisdiction: jurisdiction,
       };
 
       let response;
@@ -535,6 +537,34 @@ const DocumentCreation = () => {
                           Describe the legal document you want to create, or click one of the templates below to prefill the prompt.
                         </p>
                       </div>
+
+                      {/* Jurisdiction Selection Segmented Toggle */}
+                      <div className="flex flex-col items-center gap-1.5 pt-1 select-none">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Jurisdiction</span>
+                        <div className="flex bg-muted p-0.5 rounded-full border border-border">
+                          <button
+                            onClick={() => setJurisdiction('india')}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                              jurisdiction === 'india'
+                                ? 'bg-card text-primary shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            India
+                          </button>
+                          <button
+                            onClick={() => setJurisdiction('generic')}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                              jurisdiction === 'generic'
+                                ? 'bg-card text-primary shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Generic / International
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="flex flex-wrap gap-2.5 justify-center pt-2">
                         {[
                           "Draft an NDA",
@@ -753,6 +783,32 @@ const DocumentCreation = () => {
             </div>
 
             <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end items-center">
+              {/* Jurisdiction Toggle Pill (Toolbar) */}
+              <div className="flex bg-muted p-0.5 rounded-full border border-border select-none mr-1">
+                <button
+                  onClick={() => setJurisdiction('india')}
+                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                    jurisdiction === 'india'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Draft documents based on Indian laws"
+                >
+                  India
+                </button>
+                <button
+                  onClick={() => setJurisdiction('generic')}
+                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                    jurisdiction === 'generic'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="Draft documents based on generic laws"
+                >
+                  Generic
+                </button>
+              </div>
+
               {/* Segmented Control for Edit/Preview */}
               <div className="flex bg-muted p-1 rounded-lg mr-1.5">
                 <button
