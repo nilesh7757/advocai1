@@ -1,6 +1,10 @@
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django.http import FileResponse
+from django.core.mail import send_mail
+from django.conf import settings
+import re
 import markdown
 from xhtml2pdf import pisa
 from io import BytesIO
@@ -363,3 +367,56 @@ def download_version_docx(request, pk, version_number):
     except Exception as e:
         print(f"Error in download_version_docx: {e}")
         return Response({'error': f'Error generating DOCX: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def contact(request):
+    name = (request.data.get('name') or '').strip()
+    email = (request.data.get('email') or '').strip()
+    subject = (request.data.get('subject') or '').strip()
+    message = (request.data.get('message') or '').strip()
+
+    errors = {}
+    if not name:
+        errors['name'] = 'Name is required.'
+    if not email:
+        errors['email'] = 'Email is required.'
+    elif not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+        errors['email'] = 'Please enter a valid email address.'
+    if not subject:
+        errors['subject'] = 'Subject is required.'
+    if not message:
+        errors['message'] = 'Message is required.'
+
+    if errors:
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    email_subject = f'Contact Form: {subject}'
+    email_message = f'From: {name} <{email}>\n\n{message}'
+    from_email = settings.DEFAULT_FROM_EMAIL
+    recipient = getattr(settings, 'SUPPORT_EMAIL', None) or from_email
+
+    try:
+        if settings.DEBUG and not getattr(settings, 'EMAIL_HOST_USER', None):
+            print('\n' + '=' * 60)
+            print(f'[DEV MODE] Contact form submission')
+            print(f'From: {name} <{email}>')
+            print(f'Subject: {subject}')
+            print(f'Message:\n{message}')
+            print('=' * 60 + '\n')
+        else:
+            send_mail(email_subject, email_message, from_email, [recipient])
+    except Exception as e:
+        print(f'Error sending contact email: {e}')
+        if settings.DEBUG:
+            print('\n' + '=' * 60)
+            print(f'[DEV MODE FALLBACK] Contact form submission')
+            print(f'From: {name} <{email}>')
+            print(f'Subject: {subject}')
+            print(f'Message:\n{message}')
+            print('=' * 60 + '\n')
+        else:
+            return Response({'error': 'Failed to send message. Please try again later.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'message': 'Your message has been sent. We typically respond within 1-2 business days.'}, status=status.HTTP_200_OK)

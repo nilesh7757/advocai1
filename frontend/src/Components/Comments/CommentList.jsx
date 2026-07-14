@@ -38,10 +38,10 @@ const CommentList = ({ documentId }) => {
     }
 
     // WebSocket setup
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Assuming Django backend is on port 8000 for WebSocket connections
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/';
+    const wsBase = apiBase.endsWith('/') ? apiBase.replace(/^http/, 'ws') : `${apiBase.replace(/^http/, 'ws')}/`;
     const accessToken = localStorage.getItem('access_token');
-    let wsUrl = `${protocol}//localhost:8000/ws/document/${documentId}/`;
+    let wsUrl = `${wsBase}ws/document/${documentId}/`;
     if (accessToken) {
       wsUrl += `?token=${accessToken}`;
     }

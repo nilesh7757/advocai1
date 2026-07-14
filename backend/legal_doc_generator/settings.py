@@ -32,18 +32,32 @@ if not MONGO_URI:
 # Disconnect all existing connections first to prevent conflicts
 mongoengine.disconnect_all()
 
+# Detect if Django is running in test mode
+import sys
+IS_TESTING = 'test' in sys.argv
+
 # Connect directly with the 'default' alias
 try:
-    mongoengine.connect(
-        db=MONGO_DB_NAME,
-        host=MONGO_URI,
-        alias='default',
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=10000,
-        socketTimeoutMS=10000,
-        uuidRepresentation='standard'
-    )
-    print(f"[OK] MongoDB connected successfully: {MONGO_DB_NAME}")
+    if IS_TESTING:
+        import mongomock
+        mongoengine.connect(
+            db='test_' + MONGO_DB_NAME,
+            alias='default',
+            mongo_client_class=mongomock.MongoClient,
+            uuidRepresentation='standard'
+        )
+        print("[OK] MongoDB connected successfully using mongomock for testing")
+    else:
+        mongoengine.connect(
+            db=MONGO_DB_NAME,
+            host=MONGO_URI,
+            alias='default',
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000,
+            uuidRepresentation='standard'
+        )
+        print(f"[OK] MongoDB connected successfully: {MONGO_DB_NAME}")
 except Exception as e:
     print(f"[ERROR] Failed to connect to MongoDB: {e}")
     raise

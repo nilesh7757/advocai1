@@ -9,4 +9,5 @@ urlpatterns = [
     path('conversations/<str:pk>/download-latest-docx/', views.download_latest_conversation_docx, name='download-latest-conversation-docx'),
     path('conversations/<str:pk>/versions/<int:version_number>/download-pdf/', views.download_version_pdf, name='download-version-pdf'),
     path('conversations/<str:pk>/versions/<int:version_number>/download-docx/', views.download_version_docx, name='download-version-docx'),
+    path('contact/', views.contact, name='contact'),
 ]

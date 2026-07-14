@@ -7,8 +7,16 @@ from authentication.models import User
 class ShareLinkAPITestCase(TestCase):
     def setUp(self):
         self.client = Client()
+        User.objects(email='test@example.com').delete()
+        User.objects(username='testuser').delete()
         self.user = User.create_user(email='test@example.com', username='testuser', password='password')
-        self.client.force_login(self.user)
+        from authentication.views import get_tokens_for_user
+        tokens = get_tokens_for_user(self.user)
+        self.auth_headers = {'HTTP_AUTHORIZATION': f'Bearer {tokens["access"]}'}
+
+    def tearDown(self):
+        if hasattr(self, 'user') and self.user.id:
+            User.objects(id=self.user.id).delete()
 
     @patch('documents.views.update_share_permissions')
     def test_generate_share_link_existing_document_success(self, mock_update_share_permissions):
@@ -19,7 +27,7 @@ class ShareLinkAPITestCase(TestCase):
         response = self.client.post('/api/documents/generate-share-link/', {
             'document_id': document_id,
             'permission_level': 'view'
-        }, content_type='application/json')
+        }, content_type='application/json', **self.auth_headers)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('share_url', response.json())
@@ -35,7 +43,7 @@ class ShareLinkAPITestCase(TestCase):
         response = self.client.post('/api/documents/generate-share-link/', {
             'document_id': document_id,
             'permission_level': 'edit'
-        }, content_type='application/json')
+        }, content_type='application/json', **self.auth_headers)
         
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertIn('error', response.json())
@@ -51,7 +59,7 @@ class ShareLinkAPITestCase(TestCase):
             'document_content': 'This is a new document.',
             'title': 'New Shared Doc',
             'permission_level': 'view'
-        }, content_type='application/json')
+        }, content_type='application/json', **self.auth_headers)
         
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('share_url', response.json())
@@ -61,7 +69,7 @@ class ShareLinkAPITestCase(TestCase):
     def test_generate_share_link_new_document_no_content(self):
         response = self.client.post('/api/documents/generate-share-link/', {
             'title': 'Incomplete Doc'
-        }, content_type='application/json')
+        }, content_type='application/json', **self.auth_headers)
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.json())
