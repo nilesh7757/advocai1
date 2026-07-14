@@ -152,6 +152,7 @@ const DocumentCreation = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [jurisdiction, setJurisdiction] = useState('india');
 
+  const chatContainerRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [rightSidebarTab, setRightSidebarTab] = useState('comments'); // 'comments' | 'versions'
